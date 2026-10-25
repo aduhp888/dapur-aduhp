@@ -43,13 +43,12 @@ export default function ChecklistPage() {
       if (error || !data || data.length === 0) {
         setProducts(SEED_PRODUCTS);
         if (SEED_PRODUCTS.length > 0) {
-          setSelectedProductId(SEED_PRODUCTS[2].id); // Default to second hand iPhone 13 Pro
+          setSelectedProductId(SEED_PRODUCTS[0].id);
         }
       } else {
         setProducts(data);
         if (data.length > 0) {
-          const secondHand = data.find(p => p.condition === 'second') || data[0];
-          setSelectedProductId(secondHand.id);
+          setSelectedProductId(data[0].id);
         }
       }
     } catch (err) {

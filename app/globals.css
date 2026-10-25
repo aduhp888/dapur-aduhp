@@ -16,6 +16,8 @@
   --accent-cyan: #00e5ff;
   --accent-blue: #3b82f6;
   --accent-green: #10b981;
+  --accent-lime: #c6ff00;
+  --accent-orange: #ff9100;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
   --accent-purple: #a855f7;
@@ -873,4 +875,104 @@ td {
   line-height: 1.5;
   margin-bottom: 20px;
 }
+
+/* ==========================================================================
+   ADUHP ALIGNMENT: ANTUTU BENCHMARK, GAMING FPS & PRICE TIERS STYLES
+   ========================================================================== */
+
+.badge-antutu {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 109, 0, 0.12);
+  border: 1px solid rgba(255, 109, 0, 0.35);
+  color: #FF9100;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.badge-tier-1jt {
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: #00E5FF;
+}
+
+.badge-tier-2jt {
+  background: rgba(198, 255, 0, 0.12);
+  border: 1px solid rgba(198, 255, 0, 0.35);
+  color: #C6FF00;
+}
+
+.badge-tier-4jt {
+  background: rgba(255, 145, 0, 0.12);
+  border: 1px solid rgba(255, 145, 0, 0.35);
+  color: #FF9100;
+}
+
+.badge-tier-flagship {
+  background: rgba(224, 64, 251, 0.12);
+  border: 1px solid rgba(224, 64, 251, 0.35);
+  color: #E040FB;
+}
+
+.tier-pills-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tier-pill-btn {
+  background: #141414;
+  border: 1px solid var(--border-subtle);
+  color: #aaa;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.tier-pill-btn:hover {
+  background: #1c1c1c;
+  color: #fff;
+  border-color: var(--border-medium);
+}
+
+.tier-pill-btn.active {
+  background: rgba(198, 255, 0, 0.12);
+  border-color: var(--accent-lime);
+  color: var(--accent-lime);
+  box-shadow: 0 0 15px rgba(198, 255, 0, 0.15);
+}
+
+.fps-grid-mini {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.fps-item {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #999;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fps-item span:last-child {
+  color: var(--accent-lime);
+  font-weight: 700;
+}
+
 

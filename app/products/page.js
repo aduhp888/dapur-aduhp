@@ -8,35 +8,38 @@ import {
   Trash2, 
   Edit3, 
   ExternalLink, 
-  Filter, 
   Smartphone,
   Eye,
   CheckCircle,
   Copy,
-  Check
+  Check,
+  Flame,
+  ShieldCheck,
+  Zap,
+  Activity
 } from 'lucide-react';
-import { supabase, SEED_PRODUCTS } from '@/lib/supabase';
+import { supabase, SEED_PRODUCTS, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedCondition, setSelectedCondition] = useState('all');
+  const [selectedTier, setSelectedTier] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedCondition, selectedBrand]);
+  }, [selectedTier, selectedBrand]);
 
   async function fetchProducts() {
     setLoading(true);
     try {
       let query = supabase.from('dapur_products').select('*').order('created_at', { ascending: false });
 
-      if (selectedCondition !== 'all') {
-        query = query.eq('condition', selectedCondition);
+      if (selectedTier !== 'all') {
+        query = query.eq('price_tier', selectedTier);
       }
       if (selectedBrand !== 'all') {
         query = query.ilike('brand', selectedBrand);
@@ -44,17 +47,17 @@ export default function ProductsPage() {
 
       const { data, error } = await query;
 
-      if (error) {
+      if (error || !data || data.length === 0) {
         let fallback = [...SEED_PRODUCTS];
-        if (selectedCondition !== 'all') {
-          fallback = fallback.filter(p => p.condition === selectedCondition);
+        if (selectedTier !== 'all') {
+          fallback = fallback.filter(p => p.price_tier === selectedTier);
         }
         if (selectedBrand !== 'all') {
           fallback = fallback.filter(p => p.brand.toLowerCase() === selectedBrand.toLowerCase());
         }
         setProducts(fallback);
       } else {
-        setProducts(data || []);
+        setProducts(data);
       }
     } catch (err) {
       setProducts(SEED_PRODUCTS);
@@ -91,9 +94,12 @@ export default function ProductsPage() {
     return (
       p.name?.toLowerCase().includes(q) ||
       p.brand?.toLowerCase().includes(q) ||
+      p.specs?.chipset?.toLowerCase().includes(q) ||
       p.imei?.toLowerCase().includes(q)
     );
   });
+
+  const BRANDS = ['all', 'Samsung', 'Apple', 'Xiaomi', 'POCO', 'Infinix', 'Realme', 'Vivo', 'itel', 'iQOO'];
 
   return (
     <div>
@@ -101,17 +107,27 @@ export default function ProductsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
-            Katalog Produk & Inventaris HP
+            Katalog Smartphone & Benchmark Lab
           </h1>
           <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>
-            Kelola data HP Baru (BNIB Segel) dan Certified Pre-Owned (Second Grade A+) untuk 3 platform.
+            Kelola data HP 100% Baru (BNIB Segel), skor AnTuTu v10, dan uji FPS gaming untuk ekosistem <strong>aduhp.com</strong>.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
+          <a
+            href="https://aduhp.com/adu-hp"
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-secondary"
+            style={{ borderColor: 'rgba(198, 255, 0, 0.4)', color: '#C6FF00' }}
+          >
+            <span>⚔️ Uji di Arena Adu HP</span>
+            <ExternalLink size={13} />
+          </a>
           <Link href="/products/new" className="btn btn-primary">
             <PlusCircle size={15} />
-            <span>Input Produk Baru</span>
+            <span>Input HP Baru & AnTuTu</span>
           </Link>
         </div>
       </div>
@@ -119,54 +135,63 @@ export default function ProductsPage() {
       {/* Main Table Container */}
       <div className="table-container">
         {/* Filters */}
-        <div className="table-toolbar">
-          <div className="search-input-wrapper">
-            <Search size={15} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Cari berdasarkan nama HP, brand, atau IMEI..."
-              className="search-input"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Condition Filters */}
-            <button
-              onClick={() => setSelectedCondition('all')}
-              className={`filter-pill ${selectedCondition === 'all' ? 'active' : ''}`}
-            >
-              Semua Kondisi
-            </button>
-            <button
-              onClick={() => setSelectedCondition('baru')}
-              className={`filter-pill ${selectedCondition === 'baru' ? 'active' : ''}`}
-            >
-              Baru (BNIB)
-            </button>
-            <button
-              onClick={() => setSelectedCondition('second')}
-              className={`filter-pill ${selectedCondition === 'second' ? 'active' : ''}`}
-            >
-              Second Grade A+
-            </button>
+        <div className="table-toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div className="search-input-wrapper" style={{ minWidth: '300px' }}>
+              <Search size={15} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Cari berdasarkan nama HP, chipset, brand, atau IMEI..."
+                className="search-input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
 
             {/* Brand Filter */}
-            <select
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-              className="form-select"
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-            >
-              <option value="all">Semua Brand</option>
-              <option value="Apple">Apple</option>
-              <option value="Samsung">Samsung</option>
-              <option value="Xiaomi">Xiaomi</option>
-              <option value="Google Pixel">Google Pixel</option>
-              <option value="ASUS ROG">ASUS ROG</option>
-              <option value="Vivo">Vivo</option>
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#777' }}>Brand:</span>
+              <select
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+                className="form-select"
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+              >
+                {BRANDS.map(b => (
+                  <option key={b} value={b}>{b === 'all' ? 'Semua Brand' : b}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Tier Filter Pills Row */}
+          <div className="tier-pills-row" style={{ marginBottom: 0 }}>
+            {PRICE_TIERS.map(tier => {
+              const isSelected = selectedTier === tier.id;
+              return (
+                <button
+                  key={tier.id}
+                  onClick={() => setSelectedTier(tier.id)}
+                  className={`tier-pill-btn ${isSelected ? 'active' : ''}`}
+                  style={{
+                    borderColor: isSelected ? tier.color : undefined,
+                    color: isSelected ? tier.color : undefined
+                  }}
+                >
+                  <span>{tier.label}</span>
+                  {tier.badge && (
+                    <span style={{
+                      fontSize: '9.5px',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      padding: '1px 5px',
+                      borderRadius: '4px'
+                    }}>
+                      {tier.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -174,14 +199,14 @@ export default function ProductsPage() {
         {loading ? (
           <div style={{ padding: '60px', textAlign: 'center', color: '#666' }}>
             <div className="status-dot" style={{ margin: '0 auto 12px' }}></div>
-            Mengambil data produk...
+            Mengambil data katalog smartphone...
           </div>
         ) : displayedProducts.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center' }}>
             <Smartphone size={32} color="#444" style={{ margin: '0 auto 12px' }} />
-            <div style={{ color: '#fff', fontWeight: 600 }}>Tidak ada produk yang cocok</div>
+            <div style={{ color: '#fff', fontWeight: 600 }}>Tidak ada HP yang cocok</div>
             <p style={{ color: '#666', fontSize: '13px', marginTop: '4px' }}>
-              Coba ubah kata kunci pencarian atau filter yang dipilih.
+              Coba ubah kata kunci pencarian atau filter tier harga yang dipilih.
             </p>
           </div>
         ) : (
@@ -189,19 +214,31 @@ export default function ProductsPage() {
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: '60px' }}>Foto</th>
-                  <th>Nama HP & Garansi</th>
-                  <th>Kondisi & QC</th>
-                  <th>IMEI / Serial</th>
+                  <th style={{ width: '56px' }}>Foto</th>
+                  <th>Nama HP & Chipset</th>
+                  <th>Kategori Harga</th>
+                  <th>Skor AnTuTu v10</th>
+                  <th>Gaming FPS</th>
+                  <th>IMEI & Garansi</th>
                   <th>Harga (IDR)</th>
                   <th>Stok</th>
-                  <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedProducts.map((p) => {
-                  const imageSrc = (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=200';
+                  const imageSrc = (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=200';
+                  
+                  const tierClass = 
+                    p.price_tier === '1-2-jt' ? 'badge-tier-1jt' :
+                    p.price_tier === '2-4-jt' ? 'badge-tier-2jt' :
+                    p.price_tier === '4-8-jt' ? 'badge-tier-4jt' : 'badge-tier-flagship';
+
+                  const tierLabel = 
+                    p.price_tier === '1-2-jt' ? '1 - 2 Juta' :
+                    p.price_tier === '2-4-jt' ? '2 - 4 Juta' :
+                    p.price_tier === '4-8-jt' ? '4 - 8 Juta' : 'Flagship (8 Jt+)';
+
                   return (
                     <tr key={p.id}>
                       <td>
@@ -225,54 +262,70 @@ export default function ProductsPage() {
                       </td>
 
                       <td>
-                        <div style={{ fontWeight: 600, color: '#fff' }}>
+                        <div style={{ fontWeight: 700, color: '#fff', fontSize: '13.5px' }}>
                           {p.name}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#888', marginTop: '3px' }}>
-                          {p.brand} • {p.storage_gb}GB • {p.color} • <span style={{ color: '#00e5ff' }}>{p.official_distributor}</span>
+                        <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                          💻 {p.specs?.chipset || 'Octa-Core'} • {p.specs?.display || ''}
                         </div>
                       </td>
 
                       <td>
-                        {p.condition === 'baru' ? (
-                          <span className="badge badge-baru">
-                            ● BNIB Segel Resmi
-                          </span>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span className="badge badge-second">
-                              ● {p.grade || 'Second Grade A+'}
-                            </span>
-                            {p.battery_health && (
-                              <span className="badge badge-battery">
-                                BH: {p.battery_health}% Original
-                              </span>
-                            )}
+                        <span className={`badge ${tierClass}`} style={{ fontWeight: 800 }}>
+                          {tierLabel}
+                        </span>
+                      </td>
+
+                      <td>
+                        {p.antutu?.total ? (
+                          <div className="badge-antutu">
+                            <Flame size={12} />
+                            <span>{p.antutu.total.toLocaleString('id-ID')}</span>
                           </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#666' }}>-</span>
                         )}
                       </td>
 
                       <td>
-                        {p.imei ? (
+                        {p.gaming_fps ? (
+                          <div className="fps-grid-mini" style={{ width: '120px' }}>
+                            <div className="fps-item">
+                              <span>MLBB:</span>
+                              <span>{p.gaming_fps.mlbb}</span>
+                            </div>
+                            <div className="fps-item">
+                              <span>PUBG:</span>
+                              <span>{p.gaming_fps.pubg}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#666' }}>-</span>
+                        )}
+                      </td>
+
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <button
                             onClick={() => copyImei(p.imei)}
                             className="imei-badge"
-                            style={{ cursor: 'pointer', background: 'transparent' }}
+                            style={{ cursor: 'pointer', background: 'transparent', width: 'fit-content' }}
                             title="Klik untuk salin IMEI"
                           >
-                            {p.imei} {copiedId === p.imei ? <Check size={10} color="#10b981" /> : <Copy size={10} color="#666" />}
+                            {p.imei || '-'} {copiedId === p.imei ? <Check size={10} color="#10b981" /> : <Copy size={10} color="#666" />}
                           </button>
-                        ) : (
-                          <span style={{ color: '#555' }}>-</span>
-                        )}
+                          <span style={{ color: '#34d399', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <ShieldCheck size={11} /> {p.official_distributor || 'Resmi'}
+                          </span>
+                        </div>
                       </td>
 
                       <td>
-                        <div className="price-text">
+                        <div className="price-text" style={{ color: 'var(--accent-lime)', fontWeight: 800 }}>
                           {formatIDR(p.price)}
                         </div>
                         {p.original_price && p.original_price > p.price && (
-                          <div className="original-price-text">
+                          <div className="original-price-text" style={{ fontSize: '10px' }}>
                             {formatIDR(p.original_price)}
                           </div>
                         )}
@@ -280,35 +333,26 @@ export default function ProductsPage() {
 
                       <td>
                         <span className="badge badge-stock">
-                          {p.stock} Unit
-                        </span>
-                      </td>
-
-                      <td>
-                        <span className="badge" style={{
-                          background: p.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                          color: p.is_active ? '#34d399' : '#777',
-                          border: `1px solid ${p.is_active ? 'rgba(16, 185, 129, 0.2)' : 'var(--border-subtle)'}`
-                        }}>
-                          {p.is_active ? 'Aktif' : 'Draft'}
+                          {p.stock || 10} Box
                         </span>
                       </td>
 
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
                           <a
-                            href={`/api/products/${p.id}`}
+                            href={`https://aduhp.com/adu-hp`}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-secondary btn-sm"
-                            title="Lihat Raw JSON API"
+                            style={{ borderColor: 'rgba(198, 255, 0, 0.3)', color: '#C6FF00' }}
+                            title="Adu di Arena aduhp.com"
                           >
-                            <Eye size={12} />
+                            ⚔️
                           </a>
                           <Link
                             href={`/products/${p.id}/edit`}
                             className="btn btn-secondary btn-sm"
-                            title="Edit Produk"
+                            title="Edit Data"
                           >
                             <Edit3 size={12} />
                           </Link>

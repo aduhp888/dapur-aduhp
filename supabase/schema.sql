@@ -18,43 +18,48 @@ CREATE TABLE public.dapur_products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
-    brand TEXT NOT NULL DEFAULT 'Apple',
+    brand TEXT NOT NULL DEFAULT 'POCO',
     category TEXT NOT NULL DEFAULT 'Smartphone',
+    price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-8-jt', 'flagship')),
     condition TEXT NOT NULL DEFAULT 'baru' CHECK (condition IN ('baru', 'second')),
-    grade TEXT DEFAULT 'Baru (BNIB)',
+    grade TEXT DEFAULT '100% Baru (BNIB Segel)',
+    badge TEXT DEFAULT 'Baru BNIB',
     battery_health INT,
-    official_distributor TEXT DEFAULT 'iBox / Digimap',
+    official_distributor TEXT DEFAULT 'TAM Resmi Indonesia',
     imei TEXT,
     price NUMERIC(14, 2) NOT NULL,
     original_price NUMERIC(14, 2),
-    stock INT NOT NULL DEFAULT 1,
+    stock INT NOT NULL DEFAULT 10,
     ram_gb INT DEFAULT 8,
     storage_gb INT DEFAULT 256,
     color TEXT DEFAULT 'Black',
     description TEXT,
     images JSONB DEFAULT '[]'::jsonb,
     specs JSONB DEFAULT '{}'::jsonb,
-    is_featured BOOLEAN DEFAULT false,
+    antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb,
+    gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb,
+    is_featured BOOLEAN DEFAULT true,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ------------------------------------------------------------------------------
--- 3. TABLE: dapur_checklist (35 Titik Inspeksi QC & Pengujian Fungsi HP)
+-- 3. TABLE: dapur_checklist (Verifikasi Segel BNIB & 12 Titik Pengujian Lab)
 -- ------------------------------------------------------------------------------
 CREATE TABLE public.dapur_checklist (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     product_id UUID REFERENCES public.dapur_products(id) ON DELETE CASCADE,
-    category TEXT NOT NULL, -- e.g. 'Fisik & Body', 'Layar & Display', 'Kamera & Lensa', 'Baterai & Charging', 'Konektivitas & Audio', 'Keamanan Biometrik'
+    category TEXT NOT NULL,
     item_name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'passed' CHECK (status IN ('passed', 'warning', 'failed', 'not_applicable')),
     notes TEXT,
-    checked_by TEXT DEFAULT 'Teknisi aduHP',
+    checked_by TEXT DEFAULT 'Teknisi aduHP Lab',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Index for speedy queries
+CREATE INDEX IF NOT EXISTS idx_dapur_products_price_tier ON public.dapur_products(price_tier);
 CREATE INDEX IF NOT EXISTS idx_dapur_products_condition ON public.dapur_products(condition);
 CREATE INDEX IF NOT EXISTS idx_dapur_products_brand ON public.dapur_products(brand);
 CREATE INDEX IF NOT EXISTS idx_dapur_products_is_active ON public.dapur_products(is_active);

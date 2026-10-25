@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
+    const tier = searchParams.get('tier') || searchParams.get('price_tier');
     const condition = searchParams.get('condition');
     const brand = searchParams.get('brand');
     const search = searchParams.get('search');
@@ -24,6 +25,9 @@ export async function GET(request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
+    if (tier && tier !== 'all') {
+      query = query.eq('price_tier', tier);
+    }
     if (condition && condition !== 'all') {
       query = query.eq('condition', condition);
     }
@@ -46,6 +50,9 @@ export async function GET(request) {
     if (error || !data || data.length === 0) {
       source = error ? 'fallback_seed_table_missing' : 'supabase_live_empty';
       let fallback = [...SEED_PRODUCTS];
+      if (tier && tier !== 'all') {
+        fallback = fallback.filter(p => p.price_tier === tier);
+      }
       if (condition && condition !== 'all') {
         fallback = fallback.filter(p => p.condition === condition);
       }
@@ -70,9 +77,7 @@ export async function GET(request) {
       discount_percentage: item.original_price && item.original_price > item.price
         ? Math.round(((item.original_price - item.price) / item.original_price) * 100)
         : 0,
-      badge_text: item.condition === 'baru' 
-        ? 'BNIB Segel Resmi' 
-        : (item.grade || 'Second Grade A+'),
+      badge_text: item.badge || '100% Baru BNIB Segel Resmi',
       is_ready_stock: (item.stock || 0) > 0,
     }));
 
