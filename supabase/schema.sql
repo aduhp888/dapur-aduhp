@@ -227,3 +227,13 @@ INSERT INTO public.dapur_checklist (product_id, category, item_name, status, not
 ('a1000000-0000-0000-0000-000000000003', 'Baterai & Charging', 'Kondisi Baterai (BH)', 'passed', 'BH 92% Sehat Original bawaan pabrik'),
 ('a1000000-0000-0000-0000-000000000003', 'Kamera & Lensa', 'Kamera 0.5x, 1x, 3x Tele', 'passed', 'Hasil foto tajam dan fokus sensor OIS lancar'),
 ('a1000000-0000-0000-0000-000000000003', 'Konektivitas & Audio', 'Sinyal 5G & All Operator IMEI', 'passed', 'IMEI resmi Kemenperin tembus all operator');
+
+-- ------------------------------------------------------------------------------
+-- 7. SUPABASE AUTH: Konfirmasi User Admin
+-- ------------------------------------------------------------------------------
+-- Jalankan baris ini untuk auto-confirm user admin@aduhp.com:
+UPDATE auth.users 
+SET email_confirmed_at = NOW(),
+    updated_at = NOW()
+WHERE email = 'admin@aduhp.com';
+

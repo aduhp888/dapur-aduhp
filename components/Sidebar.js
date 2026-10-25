@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -10,11 +11,27 @@ import {
   Code2, 
   Database,
   ExternalLink,
-  ShieldCheck
+  LogOut
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (confirm('Yakin ingin logout dari dapur.aduhp.com?')) {
+      setLoggingOut(true);
+      try {
+        await supabase.auth.signOut();
+        await fetch('/api/auth/session', { method: 'DELETE' });
+        window.location.href = '/login';
+      } catch (err) {
+        console.error('Logout error:', err);
+        window.location.href = '/login';
+      }
+    }
+  }
 
   const navLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -79,6 +96,27 @@ export default function Sidebar() {
           </span>
           <ExternalLink size={12} color="#888" />
         </a>
+
+        {/* Tombol Logout */}
+        <button 
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="btn btn-secondary btn-sm"
+          style={{
+            width: '100%',
+            justifyContent: 'center',
+            gap: '8px',
+            color: '#f87171',
+            borderColor: 'rgba(244, 63, 94, 0.25)',
+            background: 'rgba(244, 63, 94, 0.05)',
+            marginTop: '4px',
+            cursor: loggingOut ? 'not-allowed' : 'pointer'
+          }}
+          title="Keluar dari sesi admin"
+        >
+          <LogOut size={14} />
+          <span>{loggingOut ? 'Logging out...' : 'Logout Admin'}</span>
+        </button>
       </div>
     </aside>
   );
