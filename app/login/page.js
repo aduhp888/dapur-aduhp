@@ -116,9 +116,6 @@ export default function LoginPage() {
           </div>
 
           <h1 className="login-title">DAPUR ADUHP</h1>
-          <p className="login-subtitle">
-            Admin Panel & Manajemen Stok Gadget (<span style={{ color: '#00ff88', fontWeight: 600 }}>Rp 921jt</span>)
-          </p>
         </div>
 
         {/* Error Alert */}
@@ -245,24 +242,6 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-
-        {/* Security Notice */}
-        <div style={{
-          marginTop: '28px',
-          paddingTop: '20px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '12px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }}></span>
-            <span>Autentikasi Supabase Email/Password</span>
-          </div>
-          <div style={{ fontSize: '11px', color: '#555', fontFamily: 'var(--font-mono)' }}>
-            dapur.aduhp.com • 1 Admin 3 Platform
-          </div>
-        </div>
       </div>
     </div>
   );
