@@ -73,7 +73,7 @@ export default function OrdersPage() {
             shipping_address: 'Jl. TB Simatupang No. 88, Cilandak',
             payment_status: 'menunggu_verifikasi',
             bank_name: 'BCA (Bank Central Asia)',
-            bank_account_name: 'PT ADU HP INDONESIA',
+            bank_account_name: 'PT. SECOND CIRCLE TEKNOLOGI',
             bank_account_number: '8830 9291 88',
             tracking_number: '',
             created_at: new Date().toISOString()
@@ -401,7 +401,7 @@ export default function OrdersPage() {
             <div style={{ background: '#101014', padding: '16px', borderRadius: '12px', marginBottom: '16px', fontSize: '13px' }}>
               <div style={{ color: '#aaa' }}>Tujuan Transfer PT:</div>
               <div style={{ fontWeight: 800, color: '#fff', marginTop: '2px' }}>
-                {selectedOrder.bank_name} a.n. {selectedOrder.bank_account_name || 'PT ADU HP INDONESIA'}
+                {selectedOrder.bank_name} a.n. {selectedOrder.bank_account_name || 'PT. SECOND CIRCLE TEKNOLOGI'}
               </div>
               <div style={{ color: 'var(--accent-lime)', fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '16px', marginTop: '4px' }}>
                 Total: {formatIDR(selectedOrder.total_amount)}

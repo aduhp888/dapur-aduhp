@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS public.dapur_orders (
     tracking_number TEXT,
     payment_method TEXT DEFAULT 'bank_transfer_pt',
     bank_name TEXT DEFAULT 'BCA (Bank Central Asia)',
-    bank_account_name TEXT DEFAULT 'PT ADU HP INDONESIA',
+    bank_account_name TEXT DEFAULT 'PT. SECOND CIRCLE TEKNOLOGI',
     bank_account_number TEXT DEFAULT '8830 9291 88',
     payment_status TEXT NOT NULL DEFAULT 'menunggu_pembayaran' 
         CHECK (payment_status IN ('menunggu_pembayaran', 'menunggu_verifikasi', 'pembayaran_diverifikasi', 'dikemas', 'dikirim', 'selesai', 'dibatalkan')),
