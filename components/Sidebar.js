@@ -48,8 +48,9 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Brand Header */}
       <div className="brand-header">
-        <div className="brand-logo-icon" style={{ background: 'linear-gradient(135deg, #FF6D00, #C6FF00)', color: '#000', fontWeight: 900 }}>
-          VS
+        <div className="brand-logo-icon" style={{ padding: 0, overflow: 'hidden', background: '#000', border: '1px solid var(--border-lime)', boxShadow: '0 0 10px rgba(198, 255, 0, 0.35)' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Dapur AduHP Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div>
           <div className="brand-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
