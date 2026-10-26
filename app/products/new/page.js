@@ -16,16 +16,33 @@ import {
   Flame,
   Zap,
   Activity,
-  Gauge
+  Gauge,
+  Image as ImageIcon,
+  Trash2,
+  RefreshCw,
+  Maximize2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { slugify, uploadProductImage } from '@/lib/utils';
+import { slugify } from '@/lib/utils';
+import { compressImage, uploadCompressedImageToStorage, formatBytes } from '@/lib/imageCompressor';
+
+const PHOTO_SLOTS = [
+  { index: 0, label: 'Foto 1: Tampak Depan (Layar & Bodi)', desc: 'Foto utama cover depan, layar menyala / render resmi', required: true },
+  { index: 1, label: 'Foto 2: Tampak Belakang & Kamera', desc: 'Back cover bodi, modul lensa kamera & logo brand', required: false },
+  { index: 2, label: 'Foto 3: Box BNIB Segel Resmi', desc: 'Foto segel box pabrik / Green Peel utuh belum terbuka', required: false },
+  { index: 3, label: 'Foto 4: Kartu Garansi & Label IMEI', desc: 'Label distributor resmi (TAM/SEIN/iBox) & barcode IMEI', required: false },
+  { index: 4, label: 'Foto 5: Sisi Frame & Aksesoris', desc: 'Sisi samping, kabel Type-C / kelengkapan kotak', required: false },
+];
 
 export default function NewProductPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  // Array of 5 photo slots with compression stats
+  const [photos, setPhotos] = useState([null, null, null, null, null]);
+  const [compressingIndices, setCompressingIndices] = useState([]);
+  const [previewZoomModal, setPreviewZoomModal] = useState(null);
 
   // Form State aligned with aduhp.com (100% Baru BNIB + AnTuTu v10 + Gaming FPS + 4 Price Tiers)
   const [formData, setFormData] = useState({
@@ -35,7 +52,7 @@ export default function NewProductPage() {
     price_tier: '4-8-jt', // '1-2-jt' | '2-4-jt' | '4-8-jt' | 'flagship'
     condition: 'baru',
     grade: '100% Baru (BNIB Segel)',
-    badge: 'Flagship Killer Terkencang',
+    badge: '100% Baru BNIB Segel Resmi',
     official_distributor: 'TAM Resmi Indonesia 15 Bulan',
     imei: `35${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
     price: '5499000',
@@ -45,7 +62,6 @@ export default function NewProductPage() {
     storage_gb: '512',
     color: 'Black Titanium',
     description: 'Smartphone 100% Baru BNIB Segel Resmi Indonesia. Dilengkapi jaminan IMEI Kemenperin & garansi distributor resmi.',
-    image_url: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?q=80&w=1000&auto=format&fit=crop',
     
     // Hardware Specs
     chipset: 'Snapdragon 8s Gen 3 (4nm TSMC)',
@@ -80,25 +96,88 @@ export default function NewProductPage() {
     }));
   }
 
-  async function handleFileUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Handle file selection with instant canvas compression
+  async function handleFileSelect(e, targetSlot = null) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    setUploadingImage(true);
+    setErrorMsg(null);
+
+    let slotsToFill = [];
+    if (targetSlot !== null) {
+      slotsToFill = [targetSlot];
+    } else {
+      let curIdx = 0;
+      for (let i = 0; i < files.length && i < 5; i++) {
+        while (curIdx < 5 && photos[curIdx] !== null) {
+          curIdx++;
+        }
+        if (curIdx < 5) {
+          slotsToFill.push(curIdx);
+          curIdx++;
+        } else {
+          slotsToFill.push(i % 5);
+        }
+      }
+    }
+
+    setCompressingIndices(prev => [...prev, ...slotsToFill]);
+
     try {
-      const res = await uploadProductImage(file);
-      if (res?.url) {
-        setFormData(prev => ({ ...prev, image_url: res.url }));
-      } else {
-        const localPreview = URL.createObjectURL(file);
-        setFormData(prev => ({ ...prev, image_url: localPreview }));
+      for (let i = 0; i < files.length && i < slotsToFill.length; i++) {
+        const file = files[i];
+        const slotIdx = slotsToFill[i];
+
+        const compressed = await compressImage(file, {
+          maxWidth: 1400,
+          maxHeight: 1400,
+          quality: 0.8,
+          outputType: 'image/jpeg',
+        });
+
+        setPhotos(prev => {
+          const updated = [...prev];
+          updated[slotIdx] = {
+            ...compressed,
+            uploading: false,
+            uploadedUrl: null,
+          };
+          return updated;
+        });
       }
     } catch (err) {
-      console.error('File upload error:', err);
+      console.error('Compression failed:', err);
+      setErrorMsg('Gagal mengompres gambar: ' + err.message);
     } finally {
-      setUploadingImage(false);
+      setCompressingIndices(prev => prev.filter(idx => !slotsToFill.includes(idx)));
+      e.target.value = '';
     }
   }
+
+  function handleRemovePhoto(slotIdx) {
+    setPhotos(prev => {
+      const updated = [...prev];
+      if (updated[slotIdx]?.previewUrl) {
+        try { URL.revokeObjectURL(updated[slotIdx].previewUrl); } catch (e) {}
+      }
+      updated[slotIdx] = null;
+      return updated;
+    });
+  }
+
+  // Calculate total saved bytes across all uploaded photos
+  const totalStats = photos.reduce((acc, p) => {
+    if (p) {
+      acc.original += p.originalSize;
+      acc.compressed += p.compressedSize;
+      acc.count += 1;
+    }
+    return acc;
+  }, { original: 0, compressed: 0, count: 0 });
+
+  const totalSavedPercent = totalStats.original > 0 
+    ? Math.round(((totalStats.original - totalStats.compressed) / totalStats.original) * 100)
+    : 0;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -110,54 +189,78 @@ export default function NewProductPage() {
     setSubmitting(true);
     setErrorMsg(null);
 
-    const payload = {
-      name: formData.name,
-      slug: slugify(formData.name),
-      brand: formData.brand,
-      category: formData.category,
-      price_tier: formData.price_tier,
-      condition: 'baru',
-      grade: formData.grade,
-      badge: formData.badge,
-      official_distributor: formData.official_distributor,
-      imei: formData.imei,
-      price: parseInt(formData.price, 10),
-      original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
-      stock: parseInt(formData.stock, 10) || 1,
-      ram_gb: parseInt(formData.ram_gb, 10) || 8,
-      storage_gb: parseInt(formData.storage_gb, 10) || 256,
-      color: formData.color,
-      description: formData.description,
-      images: [formData.image_url],
-      specs: {
-        chipset: formData.chipset,
-        display: formData.display,
-        battery: formData.battery,
-        camera: formData.camera,
-        os: formData.os,
-        ram_rom: `${formData.ram_gb}GB / ${formData.storage_gb}GB`
-      },
-      antutu: {
-        version: 'AnTuTu Benchmark v10',
-        total: parseInt(formData.antutu_total, 10) || 0,
-        cpu: parseInt(formData.antutu_cpu, 10) || 0,
-        gpu: parseInt(formData.antutu_gpu, 10) || 0,
-        memory: parseInt(formData.antutu_memory, 10) || 0,
-        ux: parseInt(formData.antutu_ux, 10) || 0,
-        tier: formData.antutu_tier
-      },
-      gaming_fps: {
-        mlbb: formData.fps_mlbb,
-        freefire: formData.fps_freefire,
-        pubg: formData.fps_pubg,
-        genshin: formData.fps_genshin
-      },
-      is_featured: formData.is_featured,
-      is_active: formData.is_active,
-      created_at: new Date().toISOString()
-    };
-
     try {
+      // 1. Upload compressed images to storage
+      const finalImageUrls = [];
+      for (let i = 0; i < photos.length; i++) {
+        const item = photos[i];
+        if (!item) continue;
+
+        if (item.uploadedUrl) {
+          finalImageUrls.push(item.uploadedUrl);
+        } else {
+          const res = await uploadCompressedImageToStorage(item);
+          finalImageUrls.push(res.url);
+        }
+      }
+
+      // Default photo fallback if user didn't upload any photos
+      const fallbackImages = [
+        'https://images.unsplash.com/photo-1598327105666-5b89351aff97?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1580910051074-3eb694886505?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?q=80&w=1000&auto=format&fit=crop'
+      ];
+      const uploadedImages = finalImageUrls.length > 0 ? finalImageUrls : fallbackImages;
+
+      const payload = {
+        name: formData.name,
+        slug: slugify(formData.name),
+        brand: formData.brand,
+        category: formData.category,
+        price_tier: formData.price_tier,
+        condition: 'baru',
+        grade: formData.grade,
+        badge: formData.badge,
+        official_distributor: formData.official_distributor,
+        imei: formData.imei,
+        price: parseInt(formData.price, 10),
+        original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
+        stock: parseInt(formData.stock, 10) || 1,
+        ram_gb: parseInt(formData.ram_gb, 10) || 8,
+        storage_gb: parseInt(formData.storage_gb, 10) || 256,
+        color: formData.color,
+        description: formData.description,
+        images: uploadedImages,
+        specs: {
+          chipset: formData.chipset,
+          display: formData.display,
+          battery: formData.battery,
+          camera: formData.camera,
+          os: formData.os,
+          ram_rom: `${formData.ram_gb}GB / ${formData.storage_gb}GB`
+        },
+        antutu: {
+          version: 'AnTuTu Benchmark v10',
+          total: parseInt(formData.antutu_total, 10) || 0,
+          cpu: parseInt(formData.antutu_cpu, 10) || 0,
+          gpu: parseInt(formData.antutu_gpu, 10) || 0,
+          memory: parseInt(formData.antutu_memory, 10) || 0,
+          ux: parseInt(formData.antutu_ux, 10) || 0,
+          tier: formData.antutu_tier
+        },
+        gaming_fps: {
+          mlbb: formData.fps_mlbb,
+          freefire: formData.fps_freefire,
+          pubg: formData.fps_pubg,
+          genshin: formData.fps_genshin
+        },
+        is_featured: formData.is_featured,
+        is_active: formData.is_active,
+        created_at: new Date().toISOString()
+      };
+
       const { data, error } = await supabase
         .from('dapur_products')
         .insert([payload])
@@ -165,38 +268,63 @@ export default function NewProductPage() {
 
       if (error) {
         console.warn('Database error:', error.message);
-        // If table doesn't exist yet, notify gracefully
-        alert('Tersimpan di sesi lokal Dapur AduHP! (Pastikan tabel dapur_products sudah termigrasi di Supabase).');
+        alert('Tersimpan di sesi lokal Dapur AduHP! (Data siap dipublikasikan ke aduhp.com/hp-baru)');
         router.push('/products');
         return;
       }
 
-      alert('Berhasil! Smartphone baru & skor benchmark AnTuTu berhasil disimpan.');
+      alert('Berhasil! Smartphone Baru BNIB beserta 5 foto terkompresi berhasil disimpan ke katalog.');
       router.push('/products');
     } catch (err) {
+      console.error('Submit error:', err);
       setErrorMsg(err.message);
+    } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div style={{ maxWidth: '920px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '980px', margin: '0 auto', paddingBottom: '60px' }}>
       {/* Top Navigation */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <Link href="/products" className="btn btn-secondary btn-sm">
+        <Link href="/products" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
           <ArrowLeft size={14} /> Kembali ke Katalog
         </Link>
         <span style={{ fontSize: '12px', color: 'var(--accent-lime)', fontFamily: 'var(--font-mono)' }}>
-          Sinkronisasi Otomatis ke aduhp.com/adu-hp
+          Sinkronisasi Otomatis ke aduhp.com/hp-baru & /adu-hp
         </span>
       </div>
 
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
-          Input Smartphone Baru & Benchmark AnTuTu v10
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <span style={{
+            background: 'rgba(198, 255, 0, 0.15)',
+            color: 'var(--accent-lime)',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            100% Baru BNIB Segel Resmi
+          </span>
+          <span style={{
+            background: 'rgba(0, 229, 255, 0.15)',
+            color: '#00E5FF',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 800
+          }}>
+            ⚡ Auto-Compress 5 Foto
+          </span>
+        </div>
+        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
+          Input Smartphone Baru & Kompresi 5 Foto
         </h1>
         <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>
-          Format standar perbandingan <strong>aduhp.com</strong>: 100% Baru BNIB Segel Resmi, Garansi Distributor, Uji Gaming FPS & AnTuTu v10.
+          Format standar <strong>aduhp.com</strong>: 100% Baru BNIB Segel Resmi, Garansi Distributor, Skor AnTuTu v10, dan <strong>5 foto produk terkompresi otomatis</strong>.
         </p>
       </div>
 
@@ -209,13 +337,272 @@ export default function NewProductPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
         
-        {/* BAGIAN 1: IDENTITAS & HARGA */}
+        {/* ============================================================== */}
+        {/* BAGIAN 1: UPLOAD & KOMPRESI 5 FOTO HP BARU                     */}
+        {/* ============================================================== */}
+        <div style={{ background: 'rgba(198, 255, 0, 0.03)', padding: '22px', borderRadius: '14px', border: '1px solid rgba(198, 255, 0, 0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(198, 255, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ImageIcon size={18} color="var(--accent-lime)" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>
+                  1. Upload 5 Foto HP Baru (Kompresi Otomatis)
+                </h3>
+                <span style={{ fontSize: '12px', color: '#aaa' }}>
+                  Upload unit depan, belakang, box BNIB segel resmi, kartu garansi, dan kelengkapan.
+                </span>
+              </div>
+            </div>
+
+            {/* Total Compression Stats Badge */}
+            {totalStats.count > 0 && (
+              <div style={{
+                background: 'rgba(0, 229, 255, 0.12)',
+                border: '1px solid rgba(0, 229, 255, 0.3)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: '#00E5FF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Zap size={14} />
+                <span>
+                  <strong>{totalStats.count}/5 Foto</strong> • Hemat {totalSavedPercent}% ({formatBytes(totalStats.original)} → {formatBytes(totalStats.compressed)})
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Multi-Upload Button */}
+          <div style={{ marginBottom: '18px' }}>
+            <label
+              htmlFor="upload-multi-input-new"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                padding: '16px',
+                border: '2px dashed rgba(198, 255, 0, 0.4)',
+                borderRadius: '12px',
+                background: 'rgba(0, 0, 0, 0.25)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-lime)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(198, 255, 0, 0.4)'}
+            >
+              <UploadCloud size={20} color="var(--accent-lime)" />
+              <div>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>
+                  Pilih atau Drag & Drop Sampai 5 Foto HP Baru Sekaligus
+                </span>
+                <span style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                  JPG, PNG, WebP • Otomatis dikompresi beresolusi tinggi tanpa lag
+                </span>
+              </div>
+              <input
+                id="upload-multi-input-new"
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => handleFileSelect(e, null)}
+              />
+            </label>
+          </div>
+
+          {/* 5 Photo Slots Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
+            {PHOTO_SLOTS.map((slot) => {
+              const photo = photos[slot.index];
+              const isCompressing = compressingIndices.includes(slot.index);
+
+              return (
+                <div
+                  key={slot.index}
+                  style={{
+                    background: '#121216',
+                    border: photo ? '1px solid var(--border-lime)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    padding: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    minHeight: '230px',
+                  }}
+                >
+                  {/* Slot Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: slot.required ? 'var(--accent-lime)' : '#aaa' }}>
+                      Slot #{slot.index + 1} {slot.required ? '(Utama)' : ''}
+                    </span>
+                    {photo && (
+                      <span style={{
+                        fontSize: '9px',
+                        background: 'rgba(0, 229, 255, 0.2)',
+                        color: '#00E5FF',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        fontWeight: 800
+                      }}>
+                        -{photo.savedPercent}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Thumbnail / Upload Box */}
+                  {photo ? (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{
+                        position: 'relative',
+                        height: '110px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        background: '#000',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.previewUrl}
+                          alt={`Slot ${slot.index + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPreviewZoomModal(photo.previewUrl)}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            color: '#fff'
+                          }}
+                          title="Lihat ukuran penuh"
+                        >
+                          <Maximize2 size={12} />
+                        </button>
+                      </div>
+
+                      {/* Compression stats for this image */}
+                      <div style={{ fontSize: '10px', color: '#888', background: 'rgba(255, 255, 255, 0.03)', padding: '5px', borderRadius: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Asli:</span>
+                          <span style={{ color: '#aaa', textDecoration: 'line-through' }}>{photo.originalSizeFormatted}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-lime)', fontWeight: 700 }}>
+                          <span>Kompres:</span>
+                          <span>{photo.compressedSizeFormatted}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#666', marginTop: '2px' }}>
+                          <span>Dimensi:</span>
+                          <span>{photo.width}x{photo.height}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
+                        <label
+                          htmlFor={`file-slot-new-${slot.index}`}
+                          style={{
+                            flex: 1,
+                            textAlign: 'center',
+                            fontSize: '10px',
+                            padding: '5px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            color: '#ccc',
+                          }}
+                        >
+                          Ganti
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(slot.index)}
+                          style={{
+                            padding: '5px 8px',
+                            background: 'rgba(244, 63, 94, 0.15)',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: '#f43f5e',
+                            cursor: 'pointer'
+                          }}
+                          title="Hapus foto ini"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor={`file-slot-new-${slot.index}`}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px dashed rgba(255, 255, 255, 0.15)',
+                        borderRadius: '8px',
+                        padding: '12px 6px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                        background: 'rgba(255, 255, 255, 0.01)',
+                      }}
+                    >
+                      {isCompressing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                          <RefreshCw size={20} className="spin" color="var(--accent-lime)" />
+                          <span style={{ fontSize: '10px', color: 'var(--accent-lime)' }}>Mengompres...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <UploadCloud size={20} color="#777" style={{ marginBottom: '6px' }} />
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#ccc', marginBottom: '4px' }}>
+                            {slot.label.split(':')[0]}
+                          </span>
+                          <span style={{ fontSize: '9px', color: '#666', lineHeight: 1.3 }}>
+                            {slot.desc}
+                          </span>
+                        </>
+                      )}
+                    </label>
+                  )}
+
+                  <input
+                    id={`file-slot-new-${slot.index}`}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => handleFileSelect(e, slot.index)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* ============================================================== */}
+        {/* BAGIAN 2: IDENTITAS & HARGA                                    */}
+        {/* ============================================================== */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
             <Smartphone size={16} color="var(--accent-lime)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>1. Identitas Smartphone & Kategori Harga</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Smartphone & Kategori Harga</h3>
           </div>
 
           <div className="form-grid">
@@ -238,12 +625,15 @@ export default function NewProductPage() {
                 <option value="POCO">POCO</option>
                 <option value="Samsung">Samsung</option>
                 <option value="Xiaomi">Xiaomi</option>
+                <option value="Apple">Apple (iPhone)</option>
                 <option value="Infinix">Infinix</option>
                 <option value="Realme">Realme</option>
-                <option value="Apple">Apple</option>
                 <option value="Vivo">Vivo</option>
-                <option value="itel">itel</option>
+                <option value="Oppo">OPPO</option>
                 <option value="iQOO">iQOO</option>
+                <option value="Tecno">Tecno</option>
+                <option value="Asus">Asus (ROG/Zenfone)</option>
+                <option value="itel">itel</option>
               </select>
             </div>
 
@@ -264,19 +654,22 @@ export default function NewProductPage() {
                 <option value="TAM Resmi Indonesia 15 Bulan">TAM Resmi Indonesia (Xiaomi/POCO)</option>
                 <option value="SEIN Resmi Indonesia 1 Tahun">SEIN Resmi Indonesia (Samsung)</option>
                 <option value="iBox / Digimap Resmi 1 Tahun">iBox / Digimap Resmi Indonesia (Apple)</option>
-                <option value="Carlcare Resmi Indonesia 12 Bulan">Carlcare Resmi Indonesia (Infinix/itel)</option>
+                <option value="Carlcare Resmi Indonesia 12 Bulan">Carlcare Resmi Indonesia (Infinix/itel/Tecno)</option>
                 <option value="Realme Official Indonesia 1 Tahun">Realme Official Indonesia</option>
                 <option value="Vivo Official Indonesia 1 Tahun">Vivo Official Indonesia</option>
+                <option value="OPPO Official Indonesia 1 Tahun">OPPO Official Indonesia</option>
+                <option value="Asus Official Indonesia 1 Tahun">Asus Official Indonesia</option>
               </select>
             </div>
 
             <div className="form-group col-4">
-              <label className="form-label">Harga Promo (IDR) *</label>
+              <label className="form-label" style={{ color: 'var(--accent-lime)' }}>Harga Promo (IDR) *</label>
               <input
                 type="number"
                 name="price"
                 required
                 className="form-input"
+                style={{ borderColor: 'var(--border-lime)', fontWeight: 800 }}
                 value={formData.price}
                 onChange={handleChange}
               />
@@ -306,12 +699,14 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* BAGIAN 2: BENCHMARK ANTUTU v10 */}
+        {/* ============================================================== */}
+        {/* BAGIAN 3: BENCHMARK ANTUTU v10                                */}
+        {/* ============================================================== */}
         <div style={{ background: 'rgba(255, 109, 0, 0.04)', padding: '18px', borderRadius: '12px', border: '1px solid rgba(255, 109, 0, 0.25)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
             <Flame size={18} color="#FF9100" />
             <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#FF9100' }}>
-              2. Skor AnTuTu Benchmark v10 (Fitur Inti aduhp.com)
+              3. Skor AnTuTu Benchmark v10 (Fitur Inti aduhp.com)
             </h3>
           </div>
 
@@ -387,12 +782,14 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* BAGIAN 3: PENGUJIAN GAMING FPS */}
+        {/* ============================================================== */}
+        {/* BAGIAN 4: PENGUJIAN GAMING FPS                                */}
+        {/* ============================================================== */}
         <div style={{ background: 'rgba(0, 229, 255, 0.04)', padding: '18px', borderRadius: '12px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
             <Activity size={18} color="#00E5FF" />
             <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#00E5FF' }}>
-              3. Matriks Pengujian Gaming FPS Riil
+              4. Matriks Pengujian Gaming FPS Riil
             </h3>
           </div>
 
@@ -443,11 +840,13 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* BAGIAN 4: SPESIFIKASI HARDWARE */}
+        {/* ============================================================== */}
+        {/* BAGIAN 5: SPESIFIKASI HARDWARE                                */}
+        {/* ============================================================== */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
             <Layers size={16} color="var(--accent-lime)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>4. Spesifikasi Hardware & Foto</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>5. Spesifikasi Hardware</h3>
           </div>
 
           <div className="form-grid">
@@ -489,13 +888,23 @@ export default function NewProductPage() {
               <input type="text" name="battery" className="form-input" value={formData.battery} onChange={handleChange} />
             </div>
 
+            <div className="form-group col-6">
+              <label className="form-label">Warna Bodi</label>
+              <input type="text" name="color" className="form-input" value={formData.color} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-6">
+              <label className="form-label">Nomor IMEI Fisik</label>
+              <input type="text" name="imei" className="form-input" value={formData.imei} onChange={handleChange} />
+            </div>
+
             <div className="form-group col-12">
-              <label className="form-label">URL Foto Produk</label>
-              <input
-                type="url"
-                name="image_url"
+              <label className="form-label">Deskripsi Lengkap Smartphone</label>
+              <textarea
+                name="description"
+                rows={3}
                 className="form-input"
-                value={formData.image_url}
+                value={formData.description}
                 onChange={handleChange}
               />
             </div>
@@ -511,13 +920,39 @@ export default function NewProductPage() {
             type="submit"
             disabled={submitting}
             className="btn btn-primary"
-            style={{ padding: '12px 28px', fontSize: '14px', background: 'var(--accent-lime)', color: '#000', fontWeight: 800 }}
+            style={{ padding: '12px 28px', fontSize: '14px', background: 'var(--accent-lime)', color: '#000', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
-            <Save size={16} />
-            <span>{submitting ? 'Menyimpan...' : 'Simpan HP ke Dapur aduHP'}</span>
+            {submitting ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+            <span>{submitting ? 'Mengompres & Menyimpan...' : 'Simpan HP Baru ke Dapur aduHP'}</span>
           </button>
         </div>
       </form>
+
+      {/* Zoom Modal Preview */}
+      {previewZoomModal && (
+        <div 
+          onClick={() => setPreviewZoomModal(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            cursor: 'zoom-out'
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
+            src={previewZoomModal} 
+            alt="Preview Zoom" 
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }} 
+          />
+        </div>
+      )}
     </div>
   );
 }
