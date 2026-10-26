@@ -20,7 +20,9 @@ import {
   Image as ImageIcon,
   Trash2,
   RefreshCw,
-  Maximize2
+  Maximize2,
+  Plus,
+  Check
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
@@ -129,12 +131,70 @@ function NewProductContent() {
   // Form State starts empty so the user doesn't have to backspace
   const [formData, setFormData] = useState(EMPTY_NEW_FORM);
 
+  // Dynamic RAM & Storage Variants State
+  const [variants, setVariants] = useState([]);
+
+  function handleAddVariant() {
+    setVariants(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        ram: formData.ram_gb || '8',
+        storage: formData.storage_gb || '256',
+        price: formData.price || '',
+        stock: '0',
+        is_default: prev.length === 0
+      }
+    ]);
+  }
+
+  function handleRemoveVariant(id) {
+    setVariants(prev => {
+      const filtered = prev.filter(v => v.id !== id);
+      if (filtered.length > 0 && !filtered.some(v => v.is_default)) {
+        filtered[0].is_default = true;
+      }
+      return filtered;
+    });
+  }
+
+  function handleVariantChange(id, field, value) {
+    setVariants(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
+  }
+
+  function handleSetDefaultVariant(id) {
+    setVariants(prev => prev.map(v => ({ ...v, is_default: v.id === id })));
+  }
+
+  function handleSyncVariantsFromForm() {
+    if (!formData.ram_gb && !formData.storage_gb) {
+      alert('Silakan isi kolom RAM & Storage pada form terlebih dahulu.');
+      return;
+    }
+    setVariants([
+      {
+        id: Date.now(),
+        ram: formData.ram_gb || '8',
+        storage: formData.storage_gb || '256',
+        price: formData.price || '',
+        stock: formData.stock || '5',
+        is_default: true
+      }
+    ]);
+  }
+
   function handleLoadSampleData() {
     setFormData(SAMPLE_NEW_DEMO);
+    setVariants([
+      { id: 1, ram: '8', storage: '256', price: '4899000', stock: '0', is_default: false },
+      { id: 2, ram: '12', storage: '512', price: '5499000', stock: '15', is_default: true },
+      { id: 3, ram: '16', storage: '1024', price: '6499000', stock: '0', is_default: false },
+    ]);
   }
 
   function handleClearForm() {
     setFormData(EMPTY_NEW_FORM);
+    setVariants([]);
   }
 
   function handleChange(e) {
@@ -276,6 +336,33 @@ function NewProductContent() {
         else finalPriceTier = 'flagship';
       }
 
+      // Format custom variants if defined
+      let finalVariants = [];
+      if (variants.length > 0) {
+        finalVariants = variants.map(v => ({
+          ram: parseInt(v.ram, 10) || 0,
+          storage: parseInt(v.storage, 10) || 0,
+          label: `${v.ram}GB / ${v.storage}GB`,
+          price: parseInt(v.price, 10) || 0,
+          stock: parseInt(v.stock, 10) || 0,
+          isDefault: !!v.is_default
+        }));
+      } else if (formData.ram_gb && formData.storage_gb) {
+        finalVariants = [{
+          ram: parseInt(formData.ram_gb, 10) || 8,
+          storage: parseInt(formData.storage_gb, 10) || 256,
+          label: `${formData.ram_gb}GB / ${formData.storage_gb}GB`,
+          price: formData.price ? parseInt(formData.price, 10) : 0,
+          stock: isForSale ? (parseInt(formData.stock, 10) || 0) : 0,
+          isDefault: true
+        }];
+      }
+
+      const defaultVariant = finalVariants.find(v => v.isDefault) || finalVariants[0];
+      const totalStock = finalVariants.length > 0 
+        ? finalVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+        : (isForSale ? (parseInt(formData.stock, 10) || 1) : 0);
+
       const payload = {
         name: formData.name,
         slug: slugify(formData.name) + '-' + Math.random().toString(36).substring(2, 6),
@@ -287,13 +374,13 @@ function NewProductContent() {
         badge: formData.badge || '100% Baru BNIB Segel Resmi',
         official_distributor: formData.official_distributor || 'Garansi Resmi Distributor Indonesia',
         imei: formData.imei || null,
-        price: formData.price ? parseInt(formData.price, 10) : 0,
+        price: defaultVariant?.price || (formData.price ? parseInt(formData.price, 10) : 0),
         original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
-        stock: isForSale ? (parseInt(formData.stock, 10) || 1) : 0,
+        stock: totalStock,
         is_for_sale: isForSale,
         sale_status: isForSale ? 'dijual' : 'compare_only',
-        ram_gb: formData.ram_gb ? parseInt(formData.ram_gb, 10) : null,
-        storage_gb: formData.storage_gb ? parseInt(formData.storage_gb, 10) : null,
+        ram_gb: defaultVariant?.ram || (formData.ram_gb ? parseInt(formData.ram_gb, 10) : null),
+        storage_gb: defaultVariant?.storage || (formData.storage_gb ? parseInt(formData.storage_gb, 10) : null),
         color: formData.color || null,
         description: formData.description || '',
         images: uploadedImages,
@@ -303,7 +390,8 @@ function NewProductContent() {
           battery: formData.battery || '-',
           camera: formData.camera || '-',
           os: formData.os || '-',
-          ram_rom: formData.ram_gb && formData.storage_gb ? `${formData.ram_gb}GB / ${formData.storage_gb}GB` : '-'
+          ram_rom: defaultVariant ? `${defaultVariant.ram}GB / ${defaultVariant.storage}GB` : (formData.ram_gb && formData.storage_gb ? `${formData.ram_gb}GB / ${formData.storage_gb}GB` : '-'),
+          variants: finalVariants
         },
         antutu: {
           version: 'AnTuTu Benchmark v10',
@@ -912,6 +1000,202 @@ function NewProductContent() {
                 onChange={handleChange}
               />
             </div>
+          </div>
+
+          {/* ============================================================== */}
+          {/* MANAJEMEN VARIAN RAM, STORAGE, HARGA & STOK (OPSI B)           */}
+          {/* ============================================================== */}
+          <div style={{
+            marginTop: '20px',
+            background: 'rgba(198, 255, 0, 0.03)',
+            border: '1px solid rgba(198, 255, 0, 0.25)',
+            borderRadius: '12px',
+            padding: '18px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-lime)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>💾 Manajemen Varian RAM & Storage (Kapasitas, Harga & Stok)</span>
+                </h4>
+                <p style={{ fontSize: '12px', color: '#aaa', marginTop: '4px', maxWidth: '650px', lineHeight: 1.4 }}>
+                  Tentukan varian kapasitas unit. Jika sebuah varian diisi <strong>Stok = 0</strong>, harganya tetap muncul di web sebagai katalog/referensi, tetapi tombol pembelian terkunci (Status: <strong>Stok Habis</strong>).
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleSyncVariantsFromForm}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#ccc',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                  title="Sinkronkan dari data RAM, ROM, Harga & Stok form atas"
+                >
+                  ⚡ Buat 1 Varian dari Form
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddVariant}
+                  style={{
+                    background: 'var(--accent-lime)',
+                    border: 'none',
+                    color: '#000',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>+ Tambah Varian</span>
+                </button>
+              </div>
+            </div>
+
+            {/* List / Table of Variants */}
+            {variants.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px',
+                background: 'rgba(0,0,0,0.25)',
+                borderRadius: '8px',
+                border: '1px dashed rgba(255,255,255,0.1)',
+                fontSize: '12px',
+                color: '#777'
+              }}>
+                Belum ada varian kustom. Produk ini akan otomatis memiliki 1 varian standar sesuai data RAM ({formData.ram_gb || '-'}GB), Storage ({formData.storage_gb || '-'}GB), Harga, dan Stok di atas.
+                <div style={{ marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddVariant}
+                    style={{ background: 'none', border: '1px solid var(--accent-lime)', color: 'var(--accent-lime)', padding: '5px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 700 }}
+                  >
+                    + Klik untuk Tambah Varian Manual
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: '#888' }}>
+                      <th style={{ padding: '8px' }}>RAM (GB)</th>
+                      <th style={{ padding: '8px' }}>Storage (GB)</th>
+                      <th style={{ padding: '8px' }}>Harga Jual (IDR)</th>
+                      <th style={{ padding: '8px' }}>Stok Fisik (Unit)</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Varian Standar</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variants.map((v, idx) => {
+                      const isZeroStock = parseInt(v.stock, 10) <= 0 || !v.stock;
+                      return (
+                        <tr key={v.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                          <td style={{ padding: '8px' }}>
+                            <input
+                              type="number"
+                              value={v.ram}
+                              onChange={(e) => handleVariantChange(v.id, 'ram', e.target.value)}
+                              placeholder="8"
+                              className="form-input"
+                              style={{ width: '85px', padding: '6px 8px', fontSize: '12px' }}
+                            />
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <input
+                              type="number"
+                              value={v.storage}
+                              onChange={(e) => handleVariantChange(v.id, 'storage', e.target.value)}
+                              placeholder="256"
+                              className="form-input"
+                              style={{ width: '95px', padding: '6px 8px', fontSize: '12px' }}
+                            />
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <input
+                              type="number"
+                              value={v.price}
+                              onChange={(e) => handleVariantChange(v.id, 'price', e.target.value)}
+                              placeholder="3499000"
+                              className="form-input"
+                              style={{ width: '140px', padding: '6px 8px', fontSize: '12px', fontWeight: 700 }}
+                            />
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <input
+                                type="number"
+                                value={v.stock}
+                                onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value)}
+                                placeholder="0"
+                                className="form-input"
+                                style={{ width: '70px', padding: '6px 8px', fontSize: '12px' }}
+                              />
+                              {isZeroStock ? (
+                                <span style={{ fontSize: '10px', background: 'rgba(255,69,58,0.2)', color: '#FF6B6B', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                                  Habis (0)
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '10px', background: 'rgba(52,199,89,0.15)', color: '#34C759', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                                  Ready ({v.stock})
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSetDefaultVariant(v.id)}
+                              style={{
+                                background: v.is_default ? 'rgba(198, 255, 0, 0.2)' : 'rgba(255,255,255,0.05)',
+                                border: v.is_default ? '1px solid var(--accent-lime)' : '1px solid rgba(255,255,255,0.1)',
+                                color: v.is_default ? 'var(--accent-lime)' : '#777',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {v.is_default ? '✓ Standar' : 'Pilih'}
+                            </button>
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVariant(v.id)}
+                              style={{
+                                background: 'rgba(244, 63, 94, 0.15)',
+                                border: 'none',
+                                color: '#f43f5e',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                              }}
+                              title="Hapus varian ini"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
