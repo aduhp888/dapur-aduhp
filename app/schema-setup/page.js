@@ -21,15 +21,23 @@ export default function SchemaSetupPage() {
   const [tableStatus, setTableStatus] = useState(null);
 
   const sqlScript = `-- ==============================================================================
--- DATABASE SCHEMA: aduHP & Dapur aduHP (Supabase PostgreSQL 15+)
--- Tabel Jualan HP Baru BNIB Resmi & HP Second Lolos QC Lab
+-- DATABASE SCHEMA RESMI: aduHP & Dapur aduHP (Supabase PostgreSQL 15+)
+-- Platform Katalog HP, Aduan Spek AI, dan E-Commerce Resmi Rekening PT
 -- ==============================================================================
 
--- 1. Enable Extensions
+-- 1. EKSTENSI & FUNGSI SISTEM
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. TABLE: dapur_products (Katalog HP Baru & HP Second)
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. TABEL: dapur_products (Katalog HP Baru, HP Second, & HP Aduan)
 CREATE TABLE IF NOT EXISTS public.dapur_products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -37,49 +45,33 @@ CREATE TABLE IF NOT EXISTS public.dapur_products (
     brand TEXT NOT NULL DEFAULT 'POCO',
     category TEXT NOT NULL DEFAULT 'Smartphone',
     price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-8-jt', 'flagship')),
-    
-    -- Kondisi: 'baru' (BNIB Segel) atau 'second' (Bekas Lolos QC)
     condition TEXT NOT NULL DEFAULT 'baru' CHECK (condition IN ('baru', 'second')),
     grade TEXT DEFAULT '100% Baru (BNIB Segel)',
     badge TEXT DEFAULT '🟢 Dijual oleh aduHP',
-    
-    -- Khusus HP Second (Kesehatan Baterai & Grade Fisik)
     battery_health INT CHECK (battery_health IS NULL OR (battery_health >= 0 AND battery_health <= 100)),
-    
-    -- Legalitas & Distributor Resmi
     official_distributor TEXT DEFAULT 'Resmi Indonesia',
     imei TEXT,
-    
-    -- Harga & Inventori Toko
     price NUMERIC(14, 2) NOT NULL DEFAULT 0,
     original_price NUMERIC(14, 2),
     stock INT NOT NULL DEFAULT 1,
     is_for_sale BOOLEAN NOT NULL DEFAULT true,
     sale_status TEXT NOT NULL DEFAULT 'dijual' CHECK (sale_status IN ('dijual', 'compare_only')),
-    
-    -- Spesifikasi Utama & Varian
     ram_gb INT,
     storage_gb INT,
     color TEXT DEFAULT 'Black',
     description TEXT,
-    
-    -- Foto Produk (Hingga 5 foto terkompresi)
     images JSONB DEFAULT '[]'::jsonb,
-    
-    -- Spesifikasi Lengkap, Skor AnTuTu v10 & Uji FPS Gaming
+    photo_labels JSONB DEFAULT '[]'::jsonb,
     specs JSONB DEFAULT '{}'::jsonb,
     antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb,
     gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb,
-    
-    -- Status
     is_featured BOOLEAN DEFAULT true,
     is_active BOOLEAN DEFAULT true,
-    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Kolom tambahan jika tabel sudah pernah dibuat sebelumnya
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS photo_labels JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS sale_status TEXT NOT NULL DEFAULT 'dijual';
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS battery_health INT;
@@ -88,7 +80,19 @@ ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS specs JSONB DEFAULT '
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb;
 
--- 3. TABLE: dapur_checklist (35 Titik Inspeksi QC HP Second)
+CREATE INDEX IF NOT EXISTS idx_dapur_products_condition ON public.dapur_products(condition);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_brand ON public.dapur_products(brand);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_price_tier ON public.dapur_products(price_tier);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_is_for_sale ON public.dapur_products(is_for_sale);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_is_active ON public.dapur_products(is_active);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_created_at ON public.dapur_products(created_at DESC);
+
+DROP TRIGGER IF EXISTS trigger_dapur_products_updated_at ON public.dapur_products;
+CREATE TRIGGER trigger_dapur_products_updated_at
+BEFORE UPDATE ON public.dapur_products
+FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- 3. TABEL: dapur_checklist (35 Titik Inspeksi QC Lab HP Second)
 CREATE TABLE IF NOT EXISTS public.dapur_checklist (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES public.dapur_products(id) ON DELETE CASCADE,
@@ -100,58 +104,76 @@ CREATE TABLE IF NOT EXISTS public.dapur_checklist (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. INDEXES
-CREATE INDEX IF NOT EXISTS idx_dapur_products_condition ON public.dapur_products(condition);
-CREATE INDEX IF NOT EXISTS idx_dapur_products_brand ON public.dapur_products(brand);
-CREATE INDEX IF NOT EXISTS idx_dapur_products_price_tier ON public.dapur_products(price_tier);
-CREATE INDEX IF NOT EXISTS idx_dapur_products_is_for_sale ON public.dapur_products(is_for_sale);
-CREATE INDEX IF NOT EXISTS idx_dapur_products_is_active ON public.dapur_products(is_active);
-CREATE INDEX IF NOT EXISTS idx_dapur_products_created_at ON public.dapur_products(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dapur_checklist_product_id ON public.dapur_checklist(product_id);
 
--- 5. VIEWS
-CREATE OR REPLACE VIEW public.view_hp_baru AS
-SELECT * FROM public.dapur_products
-WHERE condition = 'baru' AND is_active = true;
+-- 4. TABEL: dapur_orders (Pesanan Pembelian HP, Ongkir & Rekening Resmi PT)
+CREATE TABLE IF NOT EXISTS public.dapur_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_number TEXT UNIQUE NOT NULL,
+    product_id UUID REFERENCES public.dapur_products(id) ON DELETE SET NULL,
+    product_name TEXT NOT NULL,
+    product_condition TEXT NOT NULL DEFAULT 'baru' CHECK (product_condition IN ('baru', 'second')),
+    product_image TEXT,
+    variant_ram INT,
+    variant_storage INT,
+    variant_color TEXT,
+    unit_price NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    quantity INT NOT NULL DEFAULT 1,
+    shipping_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    insurance_cost NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    unique_code INT DEFAULT 0,
+    total_amount NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT NOT NULL,
+    customer_email TEXT,
+    shipping_province TEXT NOT NULL,
+    shipping_city TEXT NOT NULL,
+    shipping_district TEXT,
+    shipping_postal_code TEXT,
+    shipping_address TEXT NOT NULL,
+    courier_code TEXT NOT NULL,
+    courier_service TEXT NOT NULL,
+    tracking_number TEXT,
+    payment_method TEXT DEFAULT 'bank_transfer_pt',
+    bank_name TEXT DEFAULT 'BCA (Bank Central Asia)',
+    bank_account_name TEXT DEFAULT 'PT ADU HP INDONESIA',
+    bank_account_number TEXT DEFAULT '8830 9291 88',
+    payment_status TEXT NOT NULL DEFAULT 'menunggu_pembayaran' 
+        CHECK (payment_status IN ('menunggu_pembayaran', 'menunggu_verifikasi', 'pembayaran_diverifikasi', 'dikemas', 'dikirim', 'selesai', 'dibatalkan')),
+    payment_proof_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE OR REPLACE VIEW public.view_hp_second AS
-SELECT * FROM public.dapur_products
-WHERE condition = 'second' AND is_active = true;
+CREATE INDEX IF NOT EXISTS idx_dapur_orders_order_number ON public.dapur_orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_dapur_orders_customer_phone ON public.dapur_orders(customer_phone);
+CREATE INDEX IF NOT EXISTS idx_dapur_orders_payment_status ON public.dapur_orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_dapur_orders_created_at ON public.dapur_orders(created_at DESC);
 
--- 6. TRIGGER updated_at
-CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_dapur_products_updated_at ON public.dapur_products;
-CREATE TRIGGER trigger_dapur_products_updated_at
-BEFORE UPDATE ON public.dapur_products
+DROP TRIGGER IF EXISTS trigger_dapur_orders_updated_at ON public.dapur_orders;
+CREATE TRIGGER trigger_dapur_orders_updated_at
+BEFORE UPDATE ON public.dapur_orders
 FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- 7. STORAGE BUCKET: products
+-- 5. STORAGE BUCKET: products
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('products', 'products', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- 8. ROW LEVEL SECURITY (RLS)
+-- 6. ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.dapur_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dapur_checklist ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Public Read dapur_products" ON public.dapur_products;
-CREATE POLICY "Public Read dapur_products" ON public.dapur_products FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Public Read dapur_checklist" ON public.dapur_checklist;
-CREATE POLICY "Public Read dapur_checklist" ON public.dapur_checklist FOR SELECT USING (true);
+ALTER TABLE public.dapur_orders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow All Operations dapur_products" ON public.dapur_products;
 CREATE POLICY "Allow All Operations dapur_products" ON public.dapur_products FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow All Operations dapur_checklist" ON public.dapur_checklist;
 CREATE POLICY "Allow All Operations dapur_checklist" ON public.dapur_checklist FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Read and Insert dapur_orders" ON public.dapur_orders;
+CREATE POLICY "Public Read and Insert dapur_orders" ON public.dapur_orders FOR ALL USING (true) WITH CHECK (true);
 
 DO $$
 BEGIN

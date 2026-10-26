@@ -97,6 +97,13 @@ export default function Sidebar() {
             5 FOTO
           </span>
         </Link>
+        <Link href="/orders" className={`nav-item ${pathname === '/orders' ? 'active' : ''}`}>
+          <CheckSquare size={16} color="var(--accent-lime)" />
+          <span style={{ fontWeight: 700 }}>Pesanan Masuk</span>
+          <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(198, 255, 0, 0.2)', color: 'var(--accent-lime)', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+            STORE
+          </span>
+        </Link>
       </div>
 
       {/* 3. DATABASE ADUAN / COMPARE ONLY (TIDAK DIJUAL) */}
