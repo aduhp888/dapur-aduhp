@@ -49,6 +49,56 @@ export default function EditProductPage() {
   // Dynamic RAM & Storage Variants State
   const [variants, setVariants] = useState([]);
 
+  // Dynamic Color Variants State
+  const [colors, setColors] = useState([]);
+
+  const COLOR_PRESETS = [
+    { name: 'Midnight Black', hex: '#1C1C1E' },
+    { name: 'Titanium Silver', hex: '#B0B0B5' },
+    { name: 'Plum Purple', hex: '#7B2CBF' },
+    { name: 'Ocean Blue', hex: '#1E40AF' },
+    { name: 'Forest Green', hex: '#15803D' },
+    { name: 'Pure White', hex: '#FFFFFF' },
+    { name: 'Champagne Gold', hex: '#D97706' },
+  ];
+
+  function handleAddColor(customName = '', customHex = '#1C1C1E') {
+    setColors(prev => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        name: customName,
+        hex: customHex,
+        is_default: prev.length === 0
+      }
+    ]);
+  }
+
+  function handleRemoveColor(id) {
+    setColors(prev => {
+      const filtered = prev.filter(c => c.id !== id);
+      if (filtered.length > 0 && !filtered.some(c => c.is_default)) {
+        filtered[0].is_default = true;
+      }
+      return filtered;
+    });
+  }
+
+  function handleColorChange(id, field, value) {
+    setColors(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  }
+
+  function handleSetDefaultColor(id) {
+    setColors(prev => prev.map(c => ({ ...c, is_default: c.id === id })));
+  }
+
+  function handleAddPresetColor(presetName, presetHex) {
+    if (colors.some(c => c.name.toLowerCase() === presetName.toLowerCase())) {
+      return;
+    }
+    handleAddColor(presetName, presetHex);
+  }
+
   function handleAddVariant() {
     setVariants(prev => [
       ...prev,
@@ -224,6 +274,23 @@ export default function EditProductPage() {
           }]);
         }
 
+        // Load existing colors from specs or fallback to single color
+        if (p.specs?.colors && Array.isArray(p.specs.colors) && p.specs.colors.length > 0) {
+          setColors(p.specs.colors.map((c, i) => ({
+            id: i + 1,
+            name: c.name || '',
+            hex: c.hex || '#1C1C1E',
+            is_default: Boolean(c.isDefault ?? c.is_default ?? (i === 0))
+          })));
+        } else if (p.color) {
+          setColors([{
+            id: 1,
+            name: p.color,
+            hex: '#7B2CBF',
+            is_default: true
+          }]);
+        }
+
         // Load existing photos into 5 slots
         const loadedPhotos = [null, null, null, null, null];
         const rawImages = Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []);
@@ -374,7 +441,24 @@ export default function EditProductPage() {
         }];
       }
 
+      // Format custom colors if defined
+      let finalColors = [];
+      if (colors.length > 0) {
+        finalColors = colors.filter(c => c.name && c.name.trim()).map(c => ({
+          name: c.name.trim(),
+          hex: c.hex || '#1C1C1E',
+          isDefault: !!c.is_default
+        }));
+      } else if (formData.color) {
+        finalColors = [{
+          name: formData.color.trim(),
+          hex: '#1C1C1E',
+          isDefault: true
+        }];
+      }
+
       const defaultVariant = finalVariants.find(v => v.isDefault) || finalVariants[0];
+      const defaultColor = finalColors.find(c => c.isDefault) || finalColors[0];
       const totalStock = finalVariants.length > 0 
         ? finalVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
         : parseInt(formData.stock || '1', 10);
@@ -394,7 +478,7 @@ export default function EditProductPage() {
         stock: totalStock,
         ram_gb: defaultVariant?.ram || parseInt(formData.ram_gb || '8', 10),
         storage_gb: defaultVariant?.storage || parseInt(formData.storage_gb || '256', 10),
-        color: formData.color,
+        color: defaultColor?.name || formData.color,
         description: formData.description,
         images: finalImageUrls,
         specs: {
@@ -404,7 +488,8 @@ export default function EditProductPage() {
           camera: formData.camera,
           os: formData.os,
           ram_rom: defaultVariant ? `${defaultVariant.ram}GB / ${defaultVariant.storage}GB` : `${formData.ram_gb}GB / ${formData.storage_gb}GB`,
-          variants: finalVariants
+          variants: finalVariants,
+          colors: finalColors
         },
         antutu: {
           version: 'AnTuTu Benchmark v10',
@@ -573,6 +658,222 @@ export default function EditProductPage() {
               onChange={handleChange}
             />
           </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* MANAJEMEN VARIAN WARNA UNIT                                    */}
+        {/* ============================================================== */}
+        <div style={{
+          marginTop: '10px',
+          background: 'rgba(0, 229, 255, 0.03)',
+          border: '1px solid rgba(0, 229, 255, 0.25)',
+          borderRadius: '12px',
+          padding: '18px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#00E5FF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🎨 Manajemen Varian Warna Unit</span>
+              </h4>
+              <p style={{ fontSize: '12px', color: '#aaa', marginTop: '4px', maxWidth: '650px', lineHeight: 1.4 }}>
+                Tambahkan pilihan warna resmi smartphone. Tiap warna akan muncul sebagai tombol pilihan warna di halaman pembelian pembeli.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => handleAddColor(formData.color || 'Plum Purple', '#7B2CBF')}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#ccc',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+                title="Ambil dari input warna bodi utama"
+              >
+                ⚡ Ambil dari Warna Bodi
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddColor()}
+                style={{
+                  background: '#00E5FF',
+                  border: 'none',
+                  color: '#000',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Plus size={14} />
+                <span>+ Tambah Warna</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Presets */}
+          <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: '#777', fontWeight: 600 }}>Pilihan Cepat:</span>
+            {COLOR_PRESETS.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleAddPresetColor(preset.name, preset.hex)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '6px',
+                  padding: '3px 8px',
+                  fontSize: '11px',
+                  color: '#ddd',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+                title={`Tambah ${preset.name}`}
+              >
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: preset.hex, border: '1px solid rgba(255,255,255,0.2)' }} />
+                <span>+ {preset.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* List / Table of Colors */}
+          {colors.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '20px',
+              background: 'rgba(0,0,0,0.25)',
+              borderRadius: '8px',
+              border: '1px dashed rgba(255,255,255,0.1)',
+              fontSize: '12px',
+              color: '#777'
+            }}>
+              Belum ada varian warna khusus. Produk ini akan otomatis menggunakan warna bodi: <strong>{formData.color || 'Standard'}</strong>.
+              <div style={{ marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleAddColor(formData.color || 'Plum Purple', '#7B2CBF')}
+                  style={{ background: 'none', border: '1px solid #00E5FF', color: '#00E5FF', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  + Tambah Warna Sekarang
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: '#888' }}>
+                    <th style={{ padding: '8px', width: '90px' }}>Palet / Visual</th>
+                    <th style={{ padding: '8px' }}>Nama Varian Warna</th>
+                    <th style={{ padding: '8px', width: '110px' }}>Kode HEX</th>
+                    <th style={{ padding: '8px', textAlign: 'center', width: '100px' }}>Warna Standar</th>
+                    <th style={{ padding: '8px', textAlign: 'center', width: '60px' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colors.map((c, idx) => (
+                    <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                      <td style={{ padding: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="color"
+                            value={c.hex}
+                            onChange={(e) => handleColorChange(c.id, 'hex', e.target.value)}
+                            style={{
+                              width: '30px',
+                              height: '30px',
+                              padding: 0,
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              background: 'transparent'
+                            }}
+                            title="Klik untuk memilih palet warna"
+                          />
+                          <span style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            background: c.hex,
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            display: 'inline-block'
+                          }} />
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="text"
+                          value={c.name}
+                          onChange={(e) => handleColorChange(c.id, 'name', e.target.value)}
+                          placeholder="Contoh: Plum Purple / Violet Purple"
+                          className="form-input"
+                          style={{ padding: '6px 10px', fontSize: '12px', fontWeight: 600 }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="text"
+                          value={c.hex}
+                          onChange={(e) => handleColorChange(c.id, 'hex', e.target.value)}
+                          placeholder="#7B2CBF"
+                          className="form-input"
+                          style={{ padding: '6px 8px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSetDefaultColor(c.id)}
+                          style={{
+                            background: c.is_default ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.05)',
+                            border: c.is_default ? '1px solid #00E5FF' : '1px solid rgba(255,255,255,0.1)',
+                            color: c.is_default ? '#00E5FF' : '#777',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {c.is_default ? '✓ Standar' : 'Pilih'}
+                        </button>
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveColor(c.id)}
+                          style={{
+                            background: 'rgba(244, 63, 94, 0.15)',
+                            border: 'none',
+                            color: '#f43f5e',
+                            padding: '5px 8px',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                          }}
+                          title="Hapus warna ini"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* ============================================================== */}
