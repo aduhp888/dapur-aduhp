@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase, SEED_PRODUCTS } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { formatIDR, slugify } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -43,31 +43,17 @@ export async function GET(request) {
 
     const { data, error } = await query;
 
-    let products = data;
-    let source = 'supabase_live';
-
-    // Graceful fallback to rich seed items if table is not yet migrated in Supabase
-    if (error || !data || data.length === 0) {
-      source = error ? 'fallback_seed_table_missing' : 'supabase_live_empty';
-      let fallback = [...SEED_PRODUCTS];
-      if (tier && tier !== 'all') {
-        fallback = fallback.filter(p => p.price_tier === tier);
-      }
-      if (condition && condition !== 'all') {
-        fallback = fallback.filter(p => p.condition === condition);
-      }
-      if (brand && brand !== 'all') {
-        fallback = fallback.filter(p => p.brand.toLowerCase() === brand.toLowerCase());
-      }
-      if (isFeatured === 'true') {
-        fallback = fallback.filter(p => p.is_featured);
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        fallback = fallback.filter(p => p.name.toLowerCase().includes(q) || (p.imei && p.imei.includes(q)));
-      }
-      products = error ? fallback : (data || []);
+    if (error) {
+      return NextResponse.json({
+        success: false,
+        source: 'supabase_error',
+        total: 0,
+        data: [],
+        error: error.message
+      }, { status: 500 });
     }
+
+    const products = data || [];
 
     // Enhance each item with formatted mobile fields
     const formattedProducts = (products || []).map((item) => ({
@@ -99,7 +85,7 @@ export async function GET(request) {
     return NextResponse.json({
       status: 'error',
       message: err.message,
-      data: SEED_PRODUCTS,
+      data: [],
     }, { status: 500 });
   }
 }

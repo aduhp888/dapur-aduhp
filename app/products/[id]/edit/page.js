@@ -16,7 +16,7 @@ import {
   Smartphone,
   ShieldCheck
 } from 'lucide-react';
-import { supabase, SEED_PRODUCTS, PRICE_TIERS } from '@/lib/supabase';
+import { supabase, PRICE_TIERS } from '@/lib/supabase';
 import { uploadProductImage } from '@/lib/utils';
 
 export default function EditProductPage() {
@@ -87,7 +87,7 @@ export default function EditProductPage() {
 
       let p = data;
       if (error || !data) {
-        p = SEED_PRODUCTS.find(item => item.id === id);
+        p = null;
       }
 
       if (p) {

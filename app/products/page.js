@@ -21,7 +21,7 @@ import {
   Scale,
   Layers
 } from 'lucide-react';
-import { supabase, SEED_PRODUCTS, PRICE_TIERS } from '@/lib/supabase';
+import { supabase, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
 
 export default function ProductsPage() {
@@ -68,23 +68,15 @@ export default function ProductsPage() {
 
       const { data, error } = await query;
 
-      if (error || !data || data.length === 0) {
-        let fallback = [...SEED_PRODUCTS];
-        if (selectedCondition !== 'all') {
-          fallback = fallback.filter(p => p.condition === selectedCondition);
-        }
-        if (selectedTier !== 'all') {
-          fallback = fallback.filter(p => p.price_tier === selectedTier);
-        }
-        if (selectedBrand !== 'all') {
-          fallback = fallback.filter(p => p.brand.toLowerCase() === selectedBrand.toLowerCase());
-        }
-        setProducts(fallback);
+      if (error) {
+        console.error('Gagal mengambil data dari Supabase:', error.message);
+        setProducts([]);
       } else {
-        setProducts(data);
+        setProducts(data || []);
       }
     } catch (err) {
-      setProducts(SEED_PRODUCTS);
+      console.error('Fetch error:', err);
+      setProducts([]);
     } finally {
       setLoading(false);
     }

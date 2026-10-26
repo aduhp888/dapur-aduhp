@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase, SEED_PRODUCTS } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -15,17 +15,7 @@ export async function GET(request, { params }) {
       .single();
 
     if (error || !data) {
-      const fallback = SEED_PRODUCTS.find(p => p.id === id || p.slug === id);
-      if (!fallback) {
-        return NextResponse.json({ status: 'error', message: 'Produk tidak ditemukan' }, { status: 404 });
-      }
-      return NextResponse.json({
-        status: 'success',
-        data: {
-          ...fallback,
-          formatted_price: formatIDR(fallback.price),
-        },
-      });
+      return NextResponse.json({ status: 'error', message: 'Produk tidak ditemukan' }, { status: 404 });
     }
 
     // Also fetch checklist for this product if available

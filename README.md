@@ -54,7 +54,7 @@ Script SQL lengkap sudah disediakan di file: [`supabase/schema.sql`](file:///c:/
 2. Di dashboard Vercel, pilih **Add New Project** -> Import repository `dapur-aduhp`.
 3. Di bagian **Environment Variables**, tambahkan:
    - `NEXT_PUBLIC_SUPABASE_URL` = `https://beajiozqffgbczkhmwan.supabase.co`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlYWppb3pxZmZnYmN6a2htd2FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjU2NzQsImV4cCI6MjEwODQ0MTY3NH0.2lxXwyIl4tQY1lhK52lVhwzLgmpzvRYNkQ9MTHQs-lg`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlYWppb3pxZmZnYmN6a2htd2FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjU2NzQsImV4cCI6MjEwODQ0MTY3NH0.2lxXwyIl4tQY1lhK52lVhwzLgmpzvRYNkQ9MTHQs-lg`
 4. Klik **Deploy**.
 5. Setelah build selesai, masuk ke **Project Settings -> Domains**, tambahkan: `dapur.aduhp.com`.
 6. Karena DNS Hostinger Anda sudah memiliki record `CNAME dapur -> cname.vercel-dns.com`, Vercel akan otomatis memverifikasi dan menerbitkan SSL. Subdomain `https://dapur.aduhp.com` langsung LIVE!

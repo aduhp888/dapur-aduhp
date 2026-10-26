@@ -13,7 +13,7 @@ import {
   Search,
   Check
 } from 'lucide-react';
-import { supabase, SEED_PRODUCTS, STANDARD_CHECKLIST_ITEMS } from '@/lib/supabase';
+import { supabase, STANDARD_CHECKLIST_ITEMS } from '@/lib/supabase';
 
 export default function ChecklistPage() {
   const [products, setProducts] = useState([]);
@@ -41,10 +41,8 @@ export default function ChecklistPage() {
         .order('created_at', { ascending: false });
 
       if (error || !data || data.length === 0) {
-        setProducts(SEED_PRODUCTS);
-        if (SEED_PRODUCTS.length > 0) {
-          setSelectedProductId(SEED_PRODUCTS[0].id);
-        }
+        setProducts([]);
+        setSelectedProductId('');
       } else {
         setProducts(data);
         if (data.length > 0) {
@@ -52,7 +50,9 @@ export default function ChecklistPage() {
         }
       }
     } catch (err) {
-      setProducts(SEED_PRODUCTS);
+      console.error('Fetch checklist products error:', err);
+      setProducts([]);
+      setSelectedProductId('');
     } finally {
       setLoading(false);
     }

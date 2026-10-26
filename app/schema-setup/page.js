@@ -21,152 +21,150 @@ export default function SchemaSetupPage() {
   const [tableStatus, setTableStatus] = useState(null);
 
   const sqlScript = `-- ==============================================================================
--- DAPUR.ADUHP.COM - Minimalist MVP Schema (2 Tables + Storage)
--- Jalankan script ini di: https://supabase.com/dashboard/project/beajiozqffgbczkhmwan/sql
+-- DATABASE SCHEMA: aduHP & Dapur aduHP (Supabase PostgreSQL 15+)
+-- Tabel Jualan HP Baru BNIB Resmi & HP Second Lolos QC Lab
 -- ==============================================================================
 
--- 1. Enable UUID Extension
+-- 1. Enable Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. TABLE: dapur_products
+-- 2. TABLE: dapur_products (Katalog HP Baru & HP Second)
 CREATE TABLE IF NOT EXISTS public.dapur_products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
     brand TEXT NOT NULL DEFAULT 'POCO',
     category TEXT NOT NULL DEFAULT 'Smartphone',
     price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-8-jt', 'flagship')),
+    
+    -- Kondisi: 'baru' (BNIB Segel) atau 'second' (Bekas Lolos QC)
     condition TEXT NOT NULL DEFAULT 'baru' CHECK (condition IN ('baru', 'second')),
     grade TEXT DEFAULT '100% Baru (BNIB Segel)',
-    badge TEXT DEFAULT 'Baru BNIB',
-    battery_health INT,
-    official_distributor TEXT DEFAULT 'TAM Resmi Indonesia',
+    badge TEXT DEFAULT '🟢 Dijual oleh aduHP',
+    
+    -- Khusus HP Second (Kesehatan Baterai & Grade Fisik)
+    battery_health INT CHECK (battery_health IS NULL OR (battery_health >= 0 AND battery_health <= 100)),
+    
+    -- Legalitas & Distributor Resmi
+    official_distributor TEXT DEFAULT 'Resmi Indonesia',
     imei TEXT,
-    price NUMERIC(14, 2) NOT NULL,
+    
+    -- Harga & Inventori Toko
+    price NUMERIC(14, 2) NOT NULL DEFAULT 0,
     original_price NUMERIC(14, 2),
-    stock INT NOT NULL DEFAULT 10,
-    ram_gb INT DEFAULT 8,
-    storage_gb INT DEFAULT 256,
+    stock INT NOT NULL DEFAULT 1,
+    is_for_sale BOOLEAN NOT NULL DEFAULT true,
+    sale_status TEXT NOT NULL DEFAULT 'dijual' CHECK (sale_status IN ('dijual', 'compare_only')),
+    
+    -- Spesifikasi Utama & Varian
+    ram_gb INT,
+    storage_gb INT,
     color TEXT DEFAULT 'Black',
     description TEXT,
+    
+    -- Foto Produk (Hingga 5 foto terkompresi)
     images JSONB DEFAULT '[]'::jsonb,
+    
+    -- Spesifikasi Lengkap, Skor AnTuTu v10 & Uji FPS Gaming
     specs JSONB DEFAULT '{}'::jsonb,
     antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb,
     gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb,
+    
+    -- Status
     is_featured BOOLEAN DEFAULT true,
     is_active BOOLEAN DEFAULT true,
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. TABLE: dapur_checklist (Verifikasi Segel BNIB & 12 Titik Pengujian Lab)
+-- Kolom tambahan jika tabel sudah pernah dibuat sebelumnya
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS sale_status TEXT NOT NULL DEFAULT 'dijual';
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS battery_health INT;
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS specs JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb;
+ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb;
+
+-- 3. TABLE: dapur_checklist (35 Titik Inspeksi QC HP Second)
 CREATE TABLE IF NOT EXISTS public.dapur_checklist (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID REFERENCES public.dapur_products(id) ON DELETE CASCADE,
     category TEXT NOT NULL,
     item_name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'passed' CHECK (status IN ('passed', 'warning', 'failed', 'not_applicable')),
     notes TEXT,
-    checked_by TEXT DEFAULT 'Teknisi aduHP',
+    checked_by TEXT DEFAULT 'Teknisi aduHP Lab',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Storage Bucket Setup
+-- 4. INDEXES
+CREATE INDEX IF NOT EXISTS idx_dapur_products_condition ON public.dapur_products(condition);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_brand ON public.dapur_products(brand);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_price_tier ON public.dapur_products(price_tier);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_is_for_sale ON public.dapur_products(is_for_sale);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_is_active ON public.dapur_products(is_active);
+CREATE INDEX IF NOT EXISTS idx_dapur_products_created_at ON public.dapur_products(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dapur_checklist_product_id ON public.dapur_checklist(product_id);
+
+-- 5. VIEWS
+CREATE OR REPLACE VIEW public.view_hp_baru AS
+SELECT * FROM public.dapur_products
+WHERE condition = 'baru' AND is_active = true;
+
+CREATE OR REPLACE VIEW public.view_hp_second AS
+SELECT * FROM public.dapur_products
+WHERE condition = 'second' AND is_active = true;
+
+-- 6. TRIGGER updated_at
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_dapur_products_updated_at ON public.dapur_products;
+CREATE TRIGGER trigger_dapur_products_updated_at
+BEFORE UPDATE ON public.dapur_products
+FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- 7. STORAGE BUCKET: products
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('products', 'products', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- 5. Row Level Security (RLS)
+-- 8. ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.dapur_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dapur_checklist ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public Read dapur_products" ON public.dapur_products;
 CREATE POLICY "Public Read dapur_products" ON public.dapur_products FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read dapur_checklist" ON public.dapur_checklist;
 CREATE POLICY "Public Read dapur_checklist" ON public.dapur_checklist FOR SELECT USING (true);
-CREATE POLICY "Anon Full Access dapur_products" ON public.dapur_products FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Anon Full Access dapur_checklist" ON public.dapur_checklist FOR ALL USING (true) WITH CHECK (true);
 
--- Storage bucket access
+DROP POLICY IF EXISTS "Allow All Operations dapur_products" ON public.dapur_products;
+CREATE POLICY "Allow All Operations dapur_products" ON public.dapur_products FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow All Operations dapur_checklist" ON public.dapur_checklist;
+CREATE POLICY "Allow All Operations dapur_checklist" ON public.dapur_checklist FOR ALL USING (true) WITH CHECK (true);
+
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Public Read products bucket" ON storage.objects;
+    DROP POLICY IF EXISTS "Allow Upload products bucket" ON storage.objects;
+    DROP POLICY IF EXISTS "Allow Update products bucket" ON storage.objects;
+    DROP POLICY IF EXISTS "Allow Delete products bucket" ON storage.objects;
+END $$;
+
 CREATE POLICY "Public Read products bucket" ON storage.objects FOR SELECT USING (bucket_id = 'products');
-CREATE POLICY "Anon Upload products bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'products');
-CREATE POLICY "Anon Update products bucket" ON storage.objects FOR UPDATE USING (bucket_id = 'products');
-CREATE POLICY "Anon Delete products bucket" ON storage.objects FOR DELETE USING (bucket_id = 'products');
-
--- 6. Initial Seed Data
-INSERT INTO public.dapur_products (
-    id, name, slug, brand, category, condition, grade, battery_health,
-    official_distributor, imei, price, original_price, stock, ram_gb, storage_gb,
-    color, description, images, specs, is_featured, is_active
-) VALUES
-(
-    'a1000000-0000-0000-0000-000000000001',
-    'iPhone 16 Pro Max 256GB',
-    'iphone-16-pro-max-256gb',
-    'Apple',
-    'Flagship Smartphone',
-    'baru',
-    'Baru (BNIB Segel)',
-    NULL,
-    'iBox / Digimap Resmi 1 Tahun',
-    '352981120938491',
-    24999000,
-    26999000,
-    15,
-    8,
-    256,
-    'Desert Titanium',
-    'Titanium Grade 5 dengan Apple A18 Pro, 48MP Fusion Camera, dan Apple Intelligence. Segel Green Peel Resmi iBox.',
-    '["https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=1000&auto=format&fit=crop"]'::jsonb,
-    '{"chipset": "Apple A18 Pro (3nm)", "display": "6.9 Super Retina XDR OLED 120Hz", "battery": "4685 mAh", "os": "iOS 18"}'::jsonb,
-    true,
-    true
-),
-(
-    'a1000000-0000-0000-0000-000000000002',
-    'Samsung Galaxy S24 Ultra 512GB',
-    'samsung-galaxy-s24-ultra-512gb',
-    'Samsung',
-    'Flagship Smartphone',
-    'baru',
-    'Baru (BNIB Segel)',
-    NULL,
-    'SEIN Resmi Indonesia 1 Tahun',
-    '359871120349812',
-    23999000,
-    25999000,
-    12,
-    12,
-    512,
-    'Titanium Black',
-    'Flagship Titanium murni dengan Gorilla Armor, kamera 200MP Quad-Tele, S-Pen, dan Galaxy AI.',
-    '["https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=1000&auto=format&fit=crop"]'::jsonb,
-    '{"chipset": "Snapdragon 8 Gen 3 for Galaxy", "display": "6.8 Dynamic AMOLED 2X 120Hz", "battery": "5000 mAh 45W", "os": "Android 14"}'::jsonb,
-    true,
-    true
-),
-(
-    'a1000000-0000-0000-0000-000000000003',
-    'iPhone 13 Pro 256GB (Second Grade A+)',
-    'iphone-13-pro-256gb-second-grade-a',
-    'Apple',
-    'Flagship Smartphone',
-    'second',
-    'Second Grade A+ (Mulus 99%)',
-    92,
-    'Eks Resmi iBox • Garansi Toko 30 Hari',
-    '351982039182390',
-    9499000,
-    18499000,
-    6,
-    6,
-    256,
-    'Sierra Blue',
-    'Unit second mulus 99% tanpa dent. TrueTone & FaceID 100% normal. Baterai Health 92% original. Lolos 35 titik inspeksi teknisi aduHP.',
-    '["https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?q=80&w=1000&auto=format&fit=crop"]'::jsonb,
-    '{"chipset": "Apple A15 Bionic", "display": "6.1 Super Retina XDR ProMotion 120Hz", "battery": "BH 92% Original", "os": "iOS 18 Supported"}'::jsonb,
-    true,
-    true
-)
-ON CONFLICT (id) DO NOTHING;`;
+CREATE POLICY "Allow Upload products bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'products');
+CREATE POLICY "Allow Update products bucket" ON storage.objects FOR UPDATE USING (bucket_id = 'products');
+CREATE POLICY "Allow Delete products bucket" ON storage.objects FOR DELETE USING (bucket_id = 'products');`;
 
   function copySql() {
     navigator.clipboard.writeText(sqlScript);

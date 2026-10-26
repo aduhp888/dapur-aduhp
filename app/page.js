@@ -26,7 +26,7 @@ import {
   ShoppingBag,
   Scale
 } from 'lucide-react';
-import { supabase, SEED_PRODUCTS, PRICE_TIERS } from '@/lib/supabase';
+import { supabase, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
 
 export default function DashboardPage() {
@@ -56,23 +56,18 @@ export default function DashboardPage() {
 
       const { data, error } = await query;
 
-      if (error || !data || data.length === 0) {
-        let fallback = [...SEED_PRODUCTS];
-        if (selectedTier !== 'all') {
-          fallback = fallback.filter(p => p.price_tier === selectedTier);
-        }
-        if (selectedBrand !== 'all') {
-          fallback = fallback.filter(p => p.brand.toLowerCase() === selectedBrand.toLowerCase());
-        }
-        setProducts(fallback);
-        setIsFallback(true);
+      if (error) {
+        console.error('Gagal mengambil data dari Supabase:', error.message);
+        setProducts([]);
+        setIsFallback(false);
       } else {
-        setProducts(data);
+        setProducts(data || []);
         setIsFallback(false);
       }
     } catch (err) {
-      setProducts(SEED_PRODUCTS);
-      setIsFallback(true);
+      console.error('Fetch error:', err);
+      setProducts([]);
+      setIsFallback(false);
     } finally {
       setLoading(false);
     }
@@ -82,12 +77,10 @@ export default function DashboardPage() {
     if (!confirm('Yakin ingin menghapus produk ini dari dapur_products?')) return;
 
     try {
-      if (!isFallback) {
-        const { error } = await supabase.from('dapur_products').delete().eq('id', id);
-        if (error) {
-          alert('Gagal menghapus: ' + error.message);
-          return;
-        }
+      const { error } = await supabase.from('dapur_products').delete().eq('id', id);
+      if (error) {
+        alert('Gagal menghapus: ' + error.message);
+        return;
       }
       setProducts(prev => prev.filter(p => p.id !== id));
       alert('Produk berhasil dihapus!');
@@ -105,18 +98,16 @@ export default function DashboardPage() {
     if (!confirm(confirmText)) return;
 
     try {
-      if (!isFallback) {
-        const { error } = await supabase
-          .from('dapur_products')
-          .update({
-            is_for_sale: newStatus,
-            sale_status: newStatus ? 'dijual' : 'compare_only',
-            stock: newStatus ? (product.stock || 5) : 0
-          })
-          .eq('id', product.id);
+      const { error } = await supabase
+        .from('dapur_products')
+        .update({
+          is_for_sale: newStatus,
+          sale_status: newStatus ? 'dijual' : 'compare_only',
+          stock: newStatus ? (product.stock || 5) : 0
+        })
+        .eq('id', product.id);
 
-        if (error) console.warn('Supabase update error:', error.message);
-      }
+      if (error) console.warn('Supabase update error:', error.message);
 
       setProducts(prev => prev.map(p => {
         if (p.id === product.id) {
