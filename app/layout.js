@@ -1,5 +1,6 @@
 import './globals.css';
 import AppShell from '../components/AppShell';
+import { ThemeProvider } from '../context/ThemeContext';
 
 export const metadata = {
   title: 'dapur.aduhp.com — 1 Admin 3 Platform (Web, Android, iPhone)',
@@ -17,9 +18,26 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="id" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('dapur_theme');
+                  var theme = saved ? saved : 'dark';
+                  document.documentElement.setAttribute('data-theme', theme);
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body>
-        <AppShell>{children}</AppShell>
+        <ThemeProvider>
+          <AppShell>{children}</AppShell>
+        </ThemeProvider>
       </body>
     </html>
   );

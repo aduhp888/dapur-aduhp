@@ -18,6 +18,7 @@ import {
   Layers
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ThemeToggle from './ThemeToggle';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -166,11 +167,27 @@ export default function Sidebar() {
 
       {/* Footer Info */}
       <div className="sidebar-footer">
+        {/* Theme Mode Switcher */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 10px',
+          background: 'var(--bg-card)',
+          borderRadius: '8px',
+          border: '1px solid var(--border-subtle)',
+        }}>
+          <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            Tema
+          </span>
+          <ThemeToggle showLabel={true} style={{ padding: '4px 8px', fontSize: '11px' }} />
+        </div>
+
         <div className="connection-status">
           <div className="status-dot"></div>
           <div>
-            <div style={{ color: '#fff', fontWeight: 600 }}>Supabase: aduhp</div>
-            <div style={{ fontSize: '10.5px', color: '#666', fontFamily: 'var(--font-mono)' }}>beajiozqffgbcz...</div>
+            <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Supabase: aduhp</div>
+            <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>beajiozqffgbcz...</div>
           </div>
         </div>
 

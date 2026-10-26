@@ -178,10 +178,10 @@ export default function ProductsPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
             Katalog Smartphone & Benchmark Lab
           </h1>
-          <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
             Kelola data HP 100% Baru (BNIB Segel), skor AnTuTu v10, dan uji FPS gaming untuk ekosistem <strong>aduhp.com</strong>.
           </p>
         </div>
@@ -273,9 +273,9 @@ export default function ProductsPage() {
                   fontSize: '11px',
                   padding: '4px 10px',
                   borderRadius: '6px',
-                  border: selectedCondition === 'all' ? '1px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                  background: selectedCondition === 'all' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  color: selectedCondition === 'all' ? '#fff' : '#888',
+                  border: selectedCondition === 'all' ? '1px solid var(--text-primary)' : '1px solid var(--border-subtle)',
+                  background: selectedCondition === 'all' ? 'var(--bg-card-hover)' : 'transparent',
+                  color: selectedCondition === 'all' ? 'var(--text-primary)' : 'var(--text-muted)',
                   cursor: 'pointer'
                 }}
               >
@@ -287,9 +287,9 @@ export default function ProductsPage() {
                   fontSize: '11px',
                   padding: '4px 10px',
                   borderRadius: '6px',
-                  border: selectedCondition === 'baru' ? '1px solid var(--border-lime)' : '1px solid rgba(255,255,255,0.1)',
+                  border: selectedCondition === 'baru' ? '1px solid var(--border-lime)' : '1px solid var(--border-subtle)',
                   background: selectedCondition === 'baru' ? 'rgba(198, 255, 0, 0.12)' : 'transparent',
-                  color: selectedCondition === 'baru' ? 'var(--accent-lime)' : '#888',
+                  color: selectedCondition === 'baru' ? 'var(--accent-lime)' : 'var(--text-muted)',
                   cursor: 'pointer',
                   fontWeight: 700
                 }}
@@ -302,9 +302,9 @@ export default function ProductsPage() {
                   fontSize: '11px',
                   padding: '4px 10px',
                   borderRadius: '6px',
-                  border: selectedCondition === 'second' ? '1px solid #00E5FF' : '1px solid rgba(255,255,255,0.1)',
+                  border: selectedCondition === 'second' ? '1px solid #00E5FF' : '1px solid var(--border-subtle)',
                   background: selectedCondition === 'second' ? 'rgba(0, 229, 255, 0.12)' : 'transparent',
-                  color: selectedCondition === 'second' ? '#00E5FF' : '#888',
+                  color: selectedCondition === 'second' ? '#00E5FF' : 'var(--text-muted)',
                   cursor: 'pointer',
                   fontWeight: 700
                 }}

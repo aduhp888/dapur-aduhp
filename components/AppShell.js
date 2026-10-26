@@ -5,6 +5,8 @@ import Sidebar from './Sidebar';
 import Link from 'next/link';
 import { PlusCircle, ExternalLink } from 'lucide-react';
 
+import ThemeToggle from './ThemeToggle';
+
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const isLoginPage = pathname === '/login';
@@ -21,15 +23,18 @@ export default function AppShell({ children }) {
         {/* Sticky Topbar */}
         <header className="top-bar">
           <div className="top-bar-left">
-            <span style={{ fontSize: '12px', color: '#666', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               HOSTINGER DNS → VERCEL CDN → SUPABASE
             </span>
-            <span className="badge" style={{ background: 'rgba(0, 229, 255, 0.08)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+            <span className="badge" style={{ background: 'rgba(0, 229, 255, 0.08)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
               dapur.aduhp.com
             </span>
           </div>
 
           <div className="top-bar-right">
+            {/* 2 Mode: Terang & Dark Mode Toggle */}
+            <ThemeToggle showLabel={true} />
+
             <a 
               href="/api/products" 
               target="_blank" 

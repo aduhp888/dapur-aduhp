@@ -180,14 +180,14 @@ export default function DashboardPage() {
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.8px', color: '#fff' }}>
+            <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.8px', color: 'var(--text-primary)' }}>
               Dashboard Dapur aduHP
             </h1>
-            <span className="badge" style={{ background: 'rgba(198, 255, 0, 0.15)', color: '#C6FF00', fontWeight: 800 }}>
+            <span className="badge" style={{ background: 'rgba(198, 255, 0, 0.15)', color: 'var(--accent-lime)', fontWeight: 800 }}>
               TERINTEGRASI ADUHP.COM
             </span>
           </div>
-          <p style={{ color: '#888', fontSize: '13.5px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '6px' }}>
             Pusat manajemen 100% Smartphone Baru (BNIB Resmi), Benchmark AnTuTu v10, Uji Gaming FPS, dan Inventaris Multi-Tier Harga.
           </p>
         </div>
