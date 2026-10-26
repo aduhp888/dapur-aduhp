@@ -12,7 +12,10 @@ import {
   Database,
   ExternalLink,
   LogOut,
-  UploadCloud
+  UploadCloud,
+  ShoppingBag,
+  Scale,
+  Layers
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -34,15 +37,7 @@ export default function Sidebar() {
     }
   }
 
-  const navLinks = [
-    { href: '/', label: 'Dashboard AduHP', icon: LayoutDashboard },
-    { href: '/products', label: 'Katalog HP & Benchmark', icon: Smartphone },
-    { href: '/products/new', label: 'Input HP Baru & AnTuTu', icon: PlusCircle },
-    { href: '/products/second', label: 'Upload HP Second (5 Foto)', icon: UploadCloud, highlight: true },
-    { href: '/checklist', label: 'Verifikasi Segel BNIB (QC)', icon: CheckSquare },
-    { href: '/api-docs', label: 'API Mobile (iOS/Android)', icon: Code2 },
-    { href: '/schema-setup', label: 'Setup Supabase SQL', icon: Database },
-  ];
+
 
   return (
     <aside className="sidebar">
@@ -61,29 +56,85 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Nav Menu */}
+      {/* 1. Dashboard Utama */}
       <div className="nav-group">
         <div className="nav-label">Manajemen Dapur</div>
-        {navLinks.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-              style={item.highlight && !isActive ? { color: '#00E5FF' } : undefined}
-            >
-              <Icon size={17} color={item.highlight && !isActive ? '#00E5FF' : undefined} />
-              <span>{item.label}</span>
-              {item.highlight && (
-                <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(0, 229, 255, 0.15)', color: '#00E5FF', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
-                  5 FOTO
-                </span>
-              )}
-            </Link>
-          );
-        })}
+        <Link href="/" className={`nav-item ${pathname === '/' ? 'active' : ''}`}>
+          <LayoutDashboard size={17} />
+          <span>Dashboard AduHP</span>
+        </Link>
+        <Link href="/products" className={`nav-item ${pathname === '/products' ? 'active' : ''}`}>
+          <Smartphone size={17} />
+          <span>Semua Katalog HP</span>
+        </Link>
+      </div>
+
+      {/* 2. UNIT DIJUAL OLEH ADUHP */}
+      <div className="nav-group">
+        <div className="nav-label" style={{ color: 'var(--accent-lime)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>🛍️ UNIT DIJUAL ADUHP</span>
+        </div>
+        <Link 
+          href="/products?tab=dijual" 
+          className="nav-item"
+          style={{ borderLeft: '2px solid var(--accent-lime)' }}
+        >
+          <ShoppingBag size={16} color="var(--accent-lime)" />
+          <span style={{ fontWeight: 700 }}>HP Dijual (Ready Stock)</span>
+          <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(198, 255, 0, 0.2)', color: 'var(--accent-lime)', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+            TOKO
+          </span>
+        </Link>
+        <Link href="/products/new?for_sale=true" className="nav-item">
+          <PlusCircle size={16} />
+          <span>Input HP Baru Dijual</span>
+        </Link>
+        <Link href="/products/second" className="nav-item" style={{ color: '#00E5FF' }}>
+          <UploadCloud size={16} color="#00E5FF" />
+          <span>Upload HP Second (5 Foto)</span>
+          <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(0, 229, 255, 0.15)', color: '#00E5FF', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+            5 FOTO
+          </span>
+        </Link>
+      </div>
+
+      {/* 3. DATABASE ADUAN / COMPARE ONLY (TIDAK DIJUAL) */}
+      <div className="nav-group">
+        <div className="nav-label" style={{ color: '#FF9100', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>⚖️ DATA ADUAN (TIDAK DIJUAL)</span>
+        </div>
+        <Link 
+          href="/products?tab=compare" 
+          className="nav-item"
+          style={{ borderLeft: '2px solid #FF9100' }}
+        >
+          <Scale size={16} color="#FF9100" />
+          <span style={{ fontWeight: 700 }}>Database HP Pembanding</span>
+          <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(255, 145, 0, 0.2)', color: '#FF9100', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+            ADUAN
+          </span>
+        </Link>
+        <Link href="/products/new?for_sale=false" className="nav-item">
+          <Layers size={16} />
+          <span>Tambah HP Pembanding</span>
+        </Link>
+      </div>
+
+      {/* 4. Sistem & Tools */}
+      <div className="nav-group">
+        <div className="nav-label">Sistem & Tools</div>
+        <Link href="/checklist" className={`nav-item ${pathname === '/checklist' ? 'active' : ''}`}>
+          <CheckSquare size={16} />
+          <span>Verifikasi Segel BNIB (QC)</span>
+        </Link>
+        <Link href="/api-docs" className={`nav-item ${pathname === '/api-docs' ? 'active' : ''}`}>
+          <Code2 size={16} />
+          <span>API Mobile (iOS/Android)</span>
+        </Link>
+        <Link href="/schema-setup" className={`nav-item ${pathname === '/schema-setup' ? 'active' : ''}`}>
+          <Database size={16} />
+          <span>Setup Supabase SQL</span>
+        </Link>
       </div>
 
       {/* Tautan Langsung ke Web Utama aduhp.com */}

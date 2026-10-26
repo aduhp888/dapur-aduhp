@@ -312,6 +312,8 @@ export default function NewSecondProductPage() {
         price: parseInt(formData.price, 10),
         original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
         stock: parseInt(formData.stock, 10) || 1,
+        is_for_sale: true,
+        sale_status: 'dijual',
         ram_gb: formData.ram_gb ? parseInt(formData.ram_gb, 10) : null,
         storage_gb: formData.storage_gb ? parseInt(formData.storage_gb, 10) : null,
         color: formData.color || null,
@@ -353,12 +355,12 @@ export default function NewSecondProductPage() {
       if (error) {
         console.warn('Database error:', error.message);
         alert('Tersimpan di sesi Dapur aduHP! (Data siap dipublikasikan ke aduhp.com/hp-second)');
-        router.push('/products');
+        router.push('/products?tab=dijual');
         return;
       }
 
-      alert('Berhasil! HP Second dengan 5 foto terkompresi berhasil disimpan ke katalog.');
-      router.push('/products');
+      alert('Berhasil! HP Second Lolos QC (Dijual oleh aduHP) dengan 5 foto terkompresi berhasil disimpan ke katalog.');
+      router.push('/products?tab=dijual');
     } catch (err) {
       console.error('Submit error:', err);
       setErrorMsg(err.message);

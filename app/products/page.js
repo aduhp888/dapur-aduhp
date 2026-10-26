@@ -16,7 +16,10 @@ import {
   Flame,
   ShieldCheck,
   Zap,
-  Activity
+  Activity,
+  ShoppingBag,
+  Scale,
+  Layers
 } from 'lucide-react';
 import { supabase, SEED_PRODUCTS, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
@@ -25,10 +28,24 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [saleFilter, setSaleFilter] = useState('all'); // 'all' | 'dijual' | 'compare_only'
   const [selectedCondition, setSelectedCondition] = useState('all'); // 'all' | 'baru' | 'second'
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
+
+  // Sync tab filter from URL query param (?tab=dijual or ?tab=compare)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'dijual') {
+        setSaleFilter('dijual');
+      } else if (tab === 'compare') {
+        setSaleFilter('compare_only');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -95,15 +112,71 @@ export default function ProductsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  async function handleToggleForSale(product) {
+    const newStatus = product.is_for_sale === false ? true : false;
+    const confirmText = newStatus 
+      ? `Ubah "${product.name}" menjadi DIJUAL OLEH ADUHP (akan tampil di katalog jualan toko & bisa dibeli)?`
+      : `Ubah "${product.name}" menjadi HANYA DATA PEMBANDING ADUAN (TIDAK DIJUAL oleh aduHP, hanya untuk adu spesifikasi)?`;
+
+    if (!confirm(confirmText)) return;
+
+    try {
+      const { error } = await supabase
+        .from('dapur_products')
+        .update({
+          is_for_sale: newStatus,
+          sale_status: newStatus ? 'dijual' : 'compare_only',
+          stock: newStatus ? (product.stock || 5) : 0
+        })
+        .eq('id', product.id);
+
+      if (error) {
+        console.warn('Supabase update error:', error.message);
+      }
+
+      setProducts(prev => prev.map(p => {
+        if (p.id === product.id) {
+          return {
+            ...p,
+            is_for_sale: newStatus,
+            sale_status: newStatus ? 'dijual' : 'compare_only',
+            stock: newStatus ? (p.stock || 5) : 0,
+            badge: newStatus ? '🟢 Dijual oleh aduHP (Ready Stock)' : '⚖️ Hanya Pembanding Aduan (Tidak Dijual)'
+          };
+        }
+        return p;
+      }));
+    } catch (err) {
+      alert('Gagal update status: ' + err.message);
+    }
+  }
+
+  // Count stats
+  const countDijual = products.filter(p => p.is_for_sale === true).length;
+  const countCompare = products.filter(p => p.is_for_sale === false).length;
+  const countBaruDijual = products.filter(p => p.is_for_sale === true && p.condition !== 'second').length;
+  const countSecondDijual = products.filter(p => p.is_for_sale === true && p.condition === 'second').length;
+
   const displayedProducts = products.filter(p => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      p.name?.toLowerCase().includes(q) ||
-      p.brand?.toLowerCase().includes(q) ||
-      p.specs?.chipset?.toLowerCase().includes(q) ||
-      p.imei?.toLowerCase().includes(q)
-    );
+    // 1. Sale status filter
+    if (saleFilter === 'dijual' && p.is_for_sale !== true) return false;
+    if (saleFilter === 'compare_only' && p.is_for_sale === true) return false;
+
+    // 2. Condition filter (baru vs second)
+    if (selectedCondition !== 'all' && p.condition !== selectedCondition) return false;
+
+    // 3. Search query
+    if (search) {
+      const q = search.toLowerCase();
+      const matchesSearch = 
+        p.name?.toLowerCase().includes(q) ||
+        p.brand?.toLowerCase().includes(q) ||
+        p.specs?.chipset?.toLowerCase().includes(q) ||
+        p.imei?.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+    }
+
+    return true;
   });
 
   const BRANDS = ['all', 'Samsung', 'Apple', 'OPPO', 'Xiaomi', 'POCO', 'Vivo', 'Realme', 'Infinix', 'iQOO', 'Tecno', 'itel', 'Asus', 'Google'];
@@ -160,34 +233,94 @@ export default function ProductsPage() {
         {/* Filters */}
         <div className="table-toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '14px' }}>
           
-          {/* Condition Filter Tabs: Semua / HP Baru / HP Second */}
+          {/* Level 1 Tabs: Klasifikasi Unit Dijual vs Data Pembanding Aduan */}
           <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', flexWrap: 'wrap' }}>
             <button
-              onClick={() => setSelectedCondition('all')}
-              className={`btn btn-sm ${selectedCondition === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setSaleFilter('all'); setSelectedCondition('all'); }}
+              className={`btn btn-sm ${saleFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ borderRadius: '8px' }}
             >
               Semua Katalog ({products.length})
             </button>
             <button
-              onClick={() => setSelectedCondition('baru')}
-              className={`btn btn-sm ${selectedCondition === 'baru' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ borderRadius: '8px' }}
-            >
-              📱 100% Baru BNIB
-            </button>
-            <button
-              onClick={() => setSelectedCondition('second')}
-              className={`btn btn-sm ${selectedCondition === 'second' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setSaleFilter('dijual'); }}
+              className={`btn btn-sm ${saleFilter === 'dijual' ? 'btn-primary' : 'btn-secondary'}`}
               style={{
                 borderRadius: '8px',
-                borderColor: selectedCondition === 'second' ? '#00E5FF' : undefined,
-                color: selectedCondition === 'second' ? '#00E5FF' : undefined
+                borderColor: saleFilter === 'dijual' ? 'var(--accent-lime)' : 'rgba(198, 255, 0, 0.3)',
+                color: saleFilter === 'dijual' ? '#000' : 'var(--accent-lime)',
+                fontWeight: 800
               }}
             >
-              🔄 HP Second Lolos QC (5 Foto Terkompresi)
+              <ShoppingBag size={14} />
+              <span>🛍️ HP Dijual oleh aduHP ({countDijual})</span>
+            </button>
+            <button
+              onClick={() => { setSaleFilter('compare_only'); setSelectedCondition('all'); }}
+              className={`btn btn-sm ${saleFilter === 'compare_only' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                borderRadius: '8px',
+                borderColor: saleFilter === 'compare_only' ? '#FF9100' : 'rgba(255, 145, 0, 0.3)',
+                color: saleFilter === 'compare_only' ? '#000' : '#FF9100',
+                background: saleFilter === 'compare_only' ? '#FF9100' : undefined,
+                fontWeight: 800
+              }}
+            >
+              <Scale size={14} />
+              <span>⚖️ Hanya Pembanding Aduan (Tidak Dijual) ({countCompare})</span>
             </button>
           </div>
+
+          {/* Level 2 Sub-Tabs: Kondisi BNIB vs Second (khusus jika tab Dijual atau Semua aktif) */}
+          {saleFilter !== 'compare_only' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '2px' }}>
+              <span style={{ fontSize: '11px', color: '#777', fontWeight: 600 }}>Tipe Kondisi Jualan:</span>
+              <button
+                onClick={() => setSelectedCondition('all')}
+                style={{
+                  fontSize: '11px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: selectedCondition === 'all' ? '1px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                  background: selectedCondition === 'all' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: selectedCondition === 'all' ? '#fff' : '#888',
+                  cursor: 'pointer'
+                }}
+              >
+                Semua Jualan ({countDijual})
+              </button>
+              <button
+                onClick={() => setSelectedCondition('baru')}
+                style={{
+                  fontSize: '11px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: selectedCondition === 'baru' ? '1px solid var(--border-lime)' : '1px solid rgba(255,255,255,0.1)',
+                  background: selectedCondition === 'baru' ? 'rgba(198, 255, 0, 0.12)' : 'transparent',
+                  color: selectedCondition === 'baru' ? 'var(--accent-lime)' : '#888',
+                  cursor: 'pointer',
+                  fontWeight: 700
+                }}
+              >
+                📱 100% Baru BNIB ({countBaruDijual})
+              </button>
+              <button
+                onClick={() => setSelectedCondition('second')}
+                style={{
+                  fontSize: '11px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: selectedCondition === 'second' ? '1px solid #00E5FF' : '1px solid rgba(255,255,255,0.1)',
+                  background: selectedCondition === 'second' ? 'rgba(0, 229, 255, 0.12)' : 'transparent',
+                  color: selectedCondition === 'second' ? '#00E5FF' : '#888',
+                  cursor: 'pointer',
+                  fontWeight: 700
+                }}
+              >
+                🔄 HP Second Lolos QC ({countSecondDijual})
+              </button>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div className="search-input-wrapper" style={{ minWidth: '300px' }}>
@@ -268,14 +401,15 @@ export default function ProductsPage() {
               <thead>
                 <tr>
                   <th style={{ width: '56px' }}>Foto</th>
-                  <th>Nama HP & Chipset</th>
+                  <th>Nama Smartphone & Chipset</th>
+                  <th>Status di aduHP</th>
                   <th>Kategori Harga</th>
                   <th>Skor AnTuTu v10</th>
                   <th>Gaming FPS</th>
                   <th>IMEI & Garansi</th>
                   <th>Harga (IDR)</th>
                   <th>Stok</th>
-                  <th style={{ textAlign: 'right' }}>Aksi</th>
+                  <th style={{ textAlign: 'right' }}>Aksi & Toggle</th>
                 </tr>
               </thead>
               <tbody>
@@ -371,6 +505,43 @@ export default function ProductsPage() {
                         </div>
                       </td>
 
+                      {/* Kolom Status di aduHP */}
+                      <td>
+                        {p.is_for_sale !== false ? (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(198, 255, 0, 0.1)',
+                            border: '1px solid rgba(198, 255, 0, 0.3)',
+                            color: 'var(--accent-lime)',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800
+                          }}>
+                            <ShoppingBag size={11} />
+                            <span>Dijual aduHP</span>
+                          </div>
+                        ) : (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(255, 145, 0, 0.1)',
+                            border: '1px solid rgba(255, 145, 0, 0.3)',
+                            color: '#FF9100',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800
+                          }}>
+                            <Scale size={11} />
+                            <span>Hanya Pembanding</span>
+                          </div>
+                        )}
+                      </td>
+
                       <td>
                         <span className={`badge ${tierClass}`} style={{ fontWeight: 800 }}>
                           {tierLabel}
@@ -415,31 +586,72 @@ export default function ProductsPage() {
                           >
                             {p.imei || '-'} {copiedId === p.imei ? <Check size={10} color="#10b981" /> : <Copy size={10} color="#666" />}
                           </button>
-                          <span style={{ color: '#34d399', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <ShieldCheck size={11} /> {p.official_distributor || 'Resmi'}
+                          <span style={{ color: p.is_for_sale !== false ? '#34d399' : '#888', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <ShieldCheck size={11} /> {p.is_for_sale !== false ? (p.official_distributor || 'Resmi') : 'Data Spesifikasi'}
                           </span>
                         </div>
                       </td>
 
+                      {/* Harga Promo */}
                       <td>
-                        <div className="price-text" style={{ color: 'var(--accent-lime)', fontWeight: 800 }}>
-                          {formatIDR(p.price)}
-                        </div>
-                        {p.original_price && p.original_price > p.price && (
-                          <div className="original-price-text" style={{ fontSize: '10px' }}>
-                            {formatIDR(p.original_price)}
+                        {p.is_for_sale !== false ? (
+                          <div>
+                            <div className="price-text" style={{ color: 'var(--accent-lime)', fontWeight: 800 }}>
+                              {formatIDR(p.price)}
+                            </div>
+                            {p.original_price && p.original_price > p.price && (
+                              <div className="original-price-text" style={{ fontSize: '10px' }}>
+                                {formatIDR(p.original_price)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#888', fontWeight: 600 }}>Tidak Dijual</span>
+                            <div style={{ fontSize: '10px', color: '#555' }}>
+                              SRP: {formatIDR(p.original_price || p.price)}
+                            </div>
                           </div>
                         )}
                       </td>
 
+                      {/* Stok Box */}
                       <td>
-                        <span className="badge badge-stock">
-                          {p.stock || 10} Box
-                        </span>
+                        {p.is_for_sale !== false ? (
+                          <span className="badge badge-stock">
+                            {p.stock || 5} Box
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#555' }}>
+                            - (Data Only)
+                          </span>
+                        )}
                       </td>
 
                       <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {/* 1-Click Quick Toggle Status */}
+                          <button
+                            onClick={() => handleToggleForSale(p)}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: p.is_for_sale !== false ? 'rgba(255, 145, 0, 0.1)' : 'rgba(198, 255, 0, 0.1)',
+                              border: p.is_for_sale !== false ? '1px solid rgba(255, 145, 0, 0.35)' : '1px solid var(--border-lime)',
+                              color: p.is_for_sale !== false ? '#FF9100' : 'var(--accent-lime)',
+                            }}
+                            title={p.is_for_sale !== false ? "Ubah ke: Hanya Pembanding Aduan (Tidak Dijual)" : "Ubah ke: Dijual oleh aduHP (Ready Stock)"}
+                          >
+                            {p.is_for_sale !== false ? <Scale size={10} /> : <ShoppingBag size={10} />}
+                            <span>{p.is_for_sale !== false ? 'Set Pembanding' : 'Set Dijual'}</span>
+                          </button>
+
                           <a
                             href={`https://aduhp.com/adu-hp`}
                             target="_blank"

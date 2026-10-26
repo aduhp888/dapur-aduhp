@@ -22,7 +22,9 @@ import {
   Gauge,
   Activity,
   Award,
-  Filter
+  Filter,
+  ShoppingBag,
+  Scale
 } from 'lucide-react';
 import { supabase, SEED_PRODUCTS, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
@@ -31,6 +33,7 @@ export default function DashboardPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFallback, setIsFallback] = useState(false);
+  const [saleFilter, setSaleFilter] = useState('all'); // 'all' | 'dijual' | 'compare_only'
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,23 +96,65 @@ export default function DashboardPage() {
     }
   }
 
-  // Calculate stats
-  const totalProducts = products.length;
-  const count1jt = products.filter(p => p.price_tier === '1-2-jt').length;
-  const count2jt = products.filter(p => p.price_tier === '2-4-jt').length;
-  const count4jt = products.filter(p => p.price_tier === '4-8-jt').length;
-  const countFlagship = products.filter(p => p.price_tier === 'flagship').length;
-  
-  const totalStock = products.reduce((acc, p) => acc + (p.stock || 0), 0);
-  const totalInventoryValue = products.reduce((acc, p) => acc + ((p.price || 0) * (p.stock || 1)), 0);
+  async function handleToggleForSale(product) {
+    const newStatus = product.is_for_sale === false ? true : false;
+    const confirmText = newStatus 
+      ? `Ubah "${product.name}" menjadi DIJUAL OLEH ADUHP (akan tampil di katalog toko & bisa dibeli)?`
+      : `Ubah "${product.name}" menjadi HANYA DATA PEMBANDING ADUAN (TIDAK DIJUAL oleh aduHP, hanya untuk adu spesifikasi)?`;
 
-  // Average AnTuTu score
+    if (!confirm(confirmText)) return;
+
+    try {
+      if (!isFallback) {
+        const { error } = await supabase
+          .from('dapur_products')
+          .update({
+            is_for_sale: newStatus,
+            sale_status: newStatus ? 'dijual' : 'compare_only',
+            stock: newStatus ? (product.stock || 5) : 0
+          })
+          .eq('id', product.id);
+
+        if (error) console.warn('Supabase update error:', error.message);
+      }
+
+      setProducts(prev => prev.map(p => {
+        if (p.id === product.id) {
+          return {
+            ...p,
+            is_for_sale: newStatus,
+            sale_status: newStatus ? 'dijual' : 'compare_only',
+            stock: newStatus ? (p.stock || 5) : 0,
+            badge: newStatus ? '🟢 Dijual oleh aduHP (Ready Stock)' : '⚖️ Hanya Pembanding Aduan (Tidak Dijual)'
+          };
+        }
+        return p;
+      }));
+    } catch (err) {
+      alert('Gagal update status: ' + err.message);
+    }
+  }
+
+  // Calculate separated stats
+  const totalProducts = products.length;
+  const countDijual = products.filter(p => p.is_for_sale === true).length;
+  const countCompare = products.filter(p => p.is_for_sale === false).length;
+  const countBaruDijual = products.filter(p => p.is_for_sale === true && p.condition !== 'second').length;
+  const countSecondDijual = products.filter(p => p.is_for_sale === true && p.condition === 'second').length;
+
+  const totalStockDijual = products.filter(p => p.is_for_sale === true).reduce((acc, p) => acc + (p.stock || 0), 0);
+  const totalInventoryValueDijual = products.filter(p => p.is_for_sale === true).reduce((acc, p) => acc + ((p.price || 0) * (p.stock || 1)), 0);
+
+  // Average AnTuTu score across all phones
   const avgAnTuTu = Math.round(
     products.reduce((acc, p) => acc + (p.antutu?.total || 0), 0) / (products.length || 1)
   );
 
-  // Search filter
+  // Filter products by saleFilter, tier, brand, search
   const displayedProducts = products.filter(p => {
+    if (saleFilter === 'dijual' && p.is_for_sale !== true) return false;
+    if (saleFilter === 'compare_only' && p.is_for_sale === true) return false;
+
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -185,59 +230,57 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid: Synchronized with aduhp.com 4-tier pricing */}
+      {/* Stats Grid: Synchronized with Unit Dijual vs Pembanding Aduan */}
       <div className="stats-grid">
-        <div className="stat-card">
+        {/* Card 1: HP Dijual oleh aduHP */}
+        <div className="stat-card" style={{ border: '1px solid rgba(198, 255, 0, 0.35)' }}>
           <div className="stat-header">
-            <span className="stat-label">Total Smartphone Baru (BNIB)</span>
-            <div className="stat-icon"><Smartphone size={16} color="#00e5ff" /></div>
+            <span className="stat-label" style={{ color: 'var(--accent-lime)' }}>🛍️ HP Dijual oleh aduHP</span>
+            <div className="stat-icon"><ShoppingBag size={16} color="var(--accent-lime)" /></div>
           </div>
-          <div className="stat-value">{totalProducts} Unit</div>
+          <div className="stat-value" style={{ color: 'var(--accent-lime)' }}>{countDijual} Unit</div>
           <div className="stat-desc">
-            <span style={{ color: '#00E5FF' }}>{count1jt} (1-2jt)</span>
+            <span style={{ color: '#fff' }}>{countBaruDijual} Baru BNIB</span>
             <span>•</span>
-            <span style={{ color: '#C6FF00' }}>{count2jt} (2-4jt)</span>
-            <span>•</span>
-            <span style={{ color: '#FF9100' }}>{count4jt} (4-8jt)</span>
-            <span>•</span>
-            <span style={{ color: '#E040FB' }}>{countFlagship} (Flagship)</span>
+            <span style={{ color: '#00E5FF' }}>{countSecondDijual} Second QC</span>
           </div>
         </div>
 
-        <div className="stat-card">
+        {/* Card 2: Database Aduan Compare Only */}
+        <div className="stat-card" style={{ border: '1px solid rgba(255, 145, 0, 0.35)' }}>
           <div className="stat-header">
-            <span className="stat-label">Rata-rata Skor AnTuTu v10</span>
-            <div className="stat-icon"><Flame size={16} color="#FF9100" /></div>
+            <span className="stat-label" style={{ color: '#FF9100' }}>⚖️ Database Aduan (Tidak Dijual)</span>
+            <div className="stat-icon"><Scale size={16} color="#FF9100" /></div>
           </div>
-          <div className="stat-value" style={{ color: '#FF9100', fontFamily: 'var(--font-mono)' }}>
-            {avgAnTuTu.toLocaleString('id-ID')}
-          </div>
+          <div className="stat-value" style={{ color: '#FF9100' }}>{countCompare} Tipe</div>
           <div className="stat-desc">
-            Benchmark resmi AnTuTu v10 Lab
+            Data Spek & Skor AnTuTu ({avgAnTuTu.toLocaleString('id-ID')} Avg)
           </div>
         </div>
 
+        {/* Card 3: Total Stok Jualan */}
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-label">Total Stok Fisik BNIB</span>
+            <span className="stat-label">Total Stok Fisik Jualan</span>
             <div className="stat-icon"><Layers size={16} color="#34d399" /></div>
           </div>
-          <div className="stat-value">{totalStock} Box</div>
+          <div className="stat-value">{totalStockDijual} Box</div>
           <div className="stat-desc">
-            100% Segel Garansi TAM, SEIN, iBox & Carlcare
+            100% Ready di Gudang aduHP
           </div>
         </div>
 
+        {/* Card 4: Nilai Inventaris Jualan */}
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-label">Total Nilai Inventaris</span>
+            <span className="stat-label">Total Nilai Inventaris Jualan</span>
             <div className="stat-icon"><TrendingUp size={16} color="var(--accent-lime)" /></div>
           </div>
           <div className="stat-value" style={{ fontSize: '20px', color: 'var(--accent-lime)' }}>
-            {formatIDR(totalInventoryValue)}
+            {formatIDR(totalInventoryValueDijual)}
           </div>
           <div className="stat-desc">
-            Berdasarkan harga jual retail promo
+            Berdasarkan unit yang aktif dijual
           </div>
         </div>
       </div>
@@ -247,6 +290,44 @@ export default function DashboardPage() {
         {/* Toolbar */}
         <div className="table-toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '14px' }}>
           
+          {/* Level 1 Tabs: Klasifikasi Unit Dijual vs Data Pembanding Aduan */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSaleFilter('all')}
+              className={`btn btn-sm ${saleFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ borderRadius: '8px' }}
+            >
+              Semua Katalog ({products.length})
+            </button>
+            <button
+              onClick={() => setSaleFilter('dijual')}
+              className={`btn btn-sm ${saleFilter === 'dijual' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                borderRadius: '8px',
+                borderColor: saleFilter === 'dijual' ? 'var(--accent-lime)' : 'rgba(198, 255, 0, 0.3)',
+                color: saleFilter === 'dijual' ? '#000' : 'var(--accent-lime)',
+                fontWeight: 800
+              }}
+            >
+              <ShoppingBag size={14} />
+              <span>🛍️ HP Dijual oleh aduHP ({countDijual})</span>
+            </button>
+            <button
+              onClick={() => setSaleFilter('compare_only')}
+              className={`btn btn-sm ${saleFilter === 'compare_only' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                borderRadius: '8px',
+                borderColor: saleFilter === 'compare_only' ? '#FF9100' : 'rgba(255, 145, 0, 0.3)',
+                color: saleFilter === 'compare_only' ? '#000' : '#FF9100',
+                background: saleFilter === 'compare_only' ? '#FF9100' : undefined,
+                fontWeight: 800
+              }}
+            >
+              <Scale size={14} />
+              <span>⚖️ Hanya Pembanding Aduan (Tidak Dijual) ({countCompare})</span>
+            </button>
+          </div>
+
           {/* Top row search & tier pills */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div className="search-input-wrapper" style={{ minWidth: '300px' }}>
@@ -338,13 +419,14 @@ export default function DashboardPage() {
                 <tr>
                   <th style={{ width: '56px' }}>Foto</th>
                   <th>Smartphone & Chipset</th>
+                  <th>Status di aduHP</th>
                   <th>Kategori Harga</th>
                   <th>Skor AnTuTu v10</th>
                   <th>Estimasi Gaming FPS</th>
                   <th>Garansi Distributor</th>
                   <th>Harga Promo (IDR)</th>
                   <th>Stok</th>
-                  <th style={{ textAlign: 'right' }}>Aksi</th>
+                  <th style={{ textAlign: 'right' }}>Aksi & Toggle</th>
                 </tr>
               </thead>
               <tbody>
@@ -399,6 +481,43 @@ export default function DashboardPage() {
                         <div style={{ fontSize: '10px', color: '#666', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
                           IMEI: {p.imei || '-'}
                         </div>
+                      </td>
+
+                      {/* Status di aduHP */}
+                      <td>
+                        {p.is_for_sale !== false ? (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(198, 255, 0, 0.1)',
+                            border: '1px solid rgba(198, 255, 0, 0.3)',
+                            color: 'var(--accent-lime)',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800
+                          }}>
+                            <ShoppingBag size={11} />
+                            <span>Dijual aduHP</span>
+                          </div>
+                        ) : (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(255, 145, 0, 0.1)',
+                            border: '1px solid rgba(255, 145, 0, 0.3)',
+                            color: '#FF9100',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800
+                          }}>
+                            <Scale size={11} />
+                            <span>Hanya Pembanding</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Tier Badge */}
@@ -457,31 +576,72 @@ export default function DashboardPage() {
                           <ShieldCheck size={13} />
                           <span>{p.official_distributor || 'Resmi Indonesia'}</span>
                         </div>
-                        <div style={{ fontSize: '10px', color: '#666' }}>100% Segel BNIB</div>
+                        <div style={{ fontSize: '10px', color: '#666' }}>
+                          {p.condition === 'second' ? 'Second QC Passed' : '100% Segel BNIB'}
+                        </div>
                       </td>
 
                       {/* Price */}
                       <td>
-                        <div className="price-text" style={{ color: 'var(--accent-lime)', fontWeight: 800 }}>
-                          {formatIDR(p.price)}
-                        </div>
-                        {p.original_price && p.original_price > p.price && (
-                          <div className="original-price-text" style={{ fontSize: '10.5px' }}>
-                            {formatIDR(p.original_price)}
+                        {p.is_for_sale !== false ? (
+                          <div>
+                            <div className="price-text" style={{ color: 'var(--accent-lime)', fontWeight: 800 }}>
+                              {formatIDR(p.price)}
+                            </div>
+                            {p.original_price && p.original_price > p.price && (
+                              <div className="original-price-text" style={{ fontSize: '10.5px' }}>
+                                {formatIDR(p.original_price)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#888', fontWeight: 600 }}>Tidak Dijual</span>
+                            <div style={{ fontSize: '10px', color: '#555' }}>
+                              SRP: {formatIDR(p.original_price || p.price)}
+                            </div>
                           </div>
                         )}
                       </td>
 
                       {/* Stock */}
                       <td>
-                        <span className="badge badge-stock">
-                          {p.stock || 10} Box
-                        </span>
+                        {p.is_for_sale !== false ? (
+                          <span className="badge badge-stock">
+                            {p.stock || 5} Box
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#555' }}>
+                            - (Data Only)
+                          </span>
+                        )}
                       </td>
 
                       {/* Actions */}
                       <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {/* 1-Click Quick Toggle Status */}
+                          <button
+                            onClick={() => handleToggleForSale(p)}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: p.is_for_sale !== false ? 'rgba(255, 145, 0, 0.1)' : 'rgba(198, 255, 0, 0.1)',
+                              border: p.is_for_sale !== false ? '1px solid rgba(255, 145, 0, 0.35)' : '1px solid var(--border-lime)',
+                              color: p.is_for_sale !== false ? '#FF9100' : 'var(--accent-lime)',
+                            }}
+                            title={p.is_for_sale !== false ? "Ubah ke: Hanya Pembanding Aduan (Tidak Dijual)" : "Ubah ke: Dijual oleh aduHP (Ready Stock)"}
+                          >
+                            {p.is_for_sale !== false ? <Scale size={10} /> : <ShoppingBag size={10} />}
+                            <span>{p.is_for_sale !== false ? 'Set Pembanding' : 'Set Dijual'}</span>
+                          </button>
+
                           <a
                             href={`https://aduhp.com/adu-hp`}
                             target="_blank"

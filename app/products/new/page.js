@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -34,8 +34,11 @@ const PHOTO_SLOTS = [
   { index: 4, label: 'Foto 5: Sisi Frame & Aksesoris', desc: 'Sisi samping, kabel Type-C / kelengkapan kotak', required: false },
 ];
 
-export default function NewProductPage() {
+function NewProductContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paramForSale = searchParams.get('for_sale');
+  const [isForSale, setIsForSale] = useState(paramForSale !== 'false');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -227,8 +230,12 @@ export default function NewProductPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!formData.name || !formData.price) {
-      alert('Nama produk dan Harga jual wajib diisi!');
+    if (!formData.name) {
+      alert('Nama smartphone wajib diisi!');
+      return;
+    }
+    if (isForSale && !formData.price) {
+      alert('Harga jual produk wajib diisi untuk smartphone yang dijual oleh aduHP!');
       return;
     }
 
@@ -280,9 +287,11 @@ export default function NewProductPage() {
         badge: formData.badge || '100% Baru BNIB Segel Resmi',
         official_distributor: formData.official_distributor || 'Garansi Resmi Distributor Indonesia',
         imei: formData.imei || null,
-        price: parseInt(formData.price, 10),
+        price: formData.price ? parseInt(formData.price, 10) : 0,
         original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
-        stock: parseInt(formData.stock, 10) || 1,
+        stock: isForSale ? (parseInt(formData.stock, 10) || 1) : 0,
+        is_for_sale: isForSale,
+        sale_status: isForSale ? 'dijual' : 'compare_only',
         ram_gb: formData.ram_gb ? parseInt(formData.ram_gb, 10) : null,
         storage_gb: formData.storage_gb ? parseInt(formData.storage_gb, 10) : null,
         color: formData.color || null,
@@ -324,12 +333,16 @@ export default function NewProductPage() {
       if (error) {
         console.warn('Database error:', error.message);
         alert('Tersimpan di sesi lokal Dapur AduHP! (Data siap dipublikasikan ke aduhp.com/hp-baru)');
-        router.push('/products');
+        router.push(isForSale ? '/products?tab=dijual' : '/products?tab=compare');
         return;
       }
 
-      alert('Berhasil! Smartphone Baru BNIB beserta 5 foto terkompresi berhasil disimpan ke katalog.');
-      router.push('/products');
+      alert(
+        isForSale 
+          ? 'Berhasil! Smartphone Baru BNIB (Dijual oleh aduHP) beserta foto terkompresi berhasil disimpan ke katalog.'
+          : 'Berhasil! Data Spesifikasi & Benchmark Smartphone (Hanya Pembanding Aduan) berhasil disimpan ke katalog.'
+      );
+      router.push(isForSale ? '/products?tab=dijual' : '/products?tab=compare');
     } catch (err) {
       console.error('Submit error:', err);
       setErrorMsg(err.message);
@@ -658,7 +671,7 @@ export default function NewProductPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Smartphone size={16} color="var(--accent-lime)" />
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Smartphone & Kategori Harga</h3>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Smartphone & Status Penjualan di aduHP</h3>
             </div>
 
             {/* Quick Demo & Clear Buttons */}
@@ -704,6 +717,94 @@ export default function NewProductPage() {
                 <Trash2 size={12} />
                 <span>Bersihkan</span>
               </button>
+            </div>
+          </div>
+
+          {/* SELEKTOR UTAMA: STATUS PRODUK DI ADUHP */}
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.4)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px',
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+              Pilih Status Smartphone di Platform aduHP <span style={{ color: 'var(--accent-lime)' }}>*</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+              {/* Option 1: Dijual oleh aduHP */}
+              <div
+                onClick={() => setIsForSale(true)}
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  border: isForSale ? '2px solid var(--accent-lime)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  background: isForSale ? 'rgba(198, 255, 0, 0.08)' : '#121216',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}
+              >
+                <input
+                  type="radio"
+                  name="status_aduhp_toggle"
+                  checked={isForSale}
+                  onChange={() => setIsForSale(true)}
+                  style={{ marginTop: '3px', accentColor: 'var(--accent-lime)', width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: isForSale ? 'var(--accent-lime)' : '#fff' }}>
+                      🛍️ DIJUAL OLEH ADUHP (READY STOCK)
+                    </span>
+                    <span style={{ fontSize: '10px', background: 'rgba(198, 255, 0, 0.2)', color: 'var(--accent-lime)', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                      Unit Jualan
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#999', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                    Unit ready stock toko aduHP: punya harga promo, stok fisik di gudang, jaminan garansi distributor resmi, dan tombol ORDER / BELI aktif.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: Hanya Database Pembanding */}
+              <div
+                onClick={() => setIsForSale(false)}
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  border: !isForSale ? '2px solid #00E5FF' : '1px solid rgba(255, 255, 255, 0.1)',
+                  background: !isForSale ? 'rgba(0, 229, 255, 0.08)' : '#121216',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}
+              >
+                <input
+                  type="radio"
+                  name="status_aduhp_toggle"
+                  checked={!isForSale}
+                  onChange={() => setIsForSale(false)}
+                  style={{ marginTop: '3px', accentColor: '#00E5FF', width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: !isForSale ? '#00E5FF' : '#fff' }}>
+                      ⚖️ HANYA DATABASE PEMBANDING (TIDAK DIJUAL)
+                    </span>
+                    <span style={{ fontSize: '10px', background: 'rgba(0, 229, 255, 0.2)', color: '#00E5FF', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                      Data Only
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#999', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                    Murni untuk data spesifikasi lengkap & skor AnTuTu v10 di arena Meja Aduan. aduHP TIDAK menjual unit ini (stok 0 & tanpa tombol beli).
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -769,14 +870,16 @@ export default function NewProductPage() {
             </div>
 
             <div className="form-group col-4">
-              <label className="form-label" style={{ color: 'var(--accent-lime)' }}>Harga Promo (IDR) *</label>
+              <label className="form-label" style={{ color: isForSale ? 'var(--accent-lime)' : '#00E5FF' }}>
+                {isForSale ? 'Harga Promo Toko aduHP (IDR) *' : 'Estimasi Harga Acuan / SRP (IDR)'}
+              </label>
               <input
                 type="number"
                 name="price"
-                required
-                placeholder="Contoh: 5499000"
+                required={isForSale}
+                placeholder={isForSale ? "Contoh: 5499000" : "Contoh: 21999000 (Harga Rilis)"}
                 className="form-input"
-                style={{ borderColor: 'var(--border-lime)', fontWeight: 800 }}
+                style={{ borderColor: isForSale ? 'var(--border-lime)' : 'rgba(0, 229, 255, 0.4)', fontWeight: 800 }}
                 value={formData.price}
                 onChange={handleChange}
               />
@@ -795,13 +898,17 @@ export default function NewProductPage() {
             </div>
 
             <div className="form-group col-4">
-              <label className="form-label">Stok Fisik BNIB (Box)</label>
+              <label className="form-label">
+                {isForSale ? 'Stok Fisik BNIB di Toko (Box) *' : 'Stok Fisik Toko aduHP (Hanya Pembanding)'}
+              </label>
               <input
                 type="number"
                 name="stock"
-                placeholder="Contoh: 10"
+                disabled={!isForSale}
+                placeholder={isForSale ? "Contoh: 10" : "0 (Tidak Ada Stok Jualan)"}
                 className="form-input"
-                value={formData.stock}
+                style={!isForSale ? { opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.03)' } : {}}
+                value={isForSale ? formData.stock : '0'}
                 onChange={handleChange}
               />
             </div>
@@ -1031,10 +1138,25 @@ export default function NewProductPage() {
             type="submit"
             disabled={submitting}
             className="btn btn-primary"
-            style={{ padding: '12px 28px', fontSize: '14px', background: 'var(--accent-lime)', color: '#000', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            style={{ 
+              padding: '12px 28px', 
+              fontSize: '14px', 
+              background: isForSale ? 'var(--accent-lime)' : '#00E5FF', 
+              color: '#000', 
+              fontWeight: 800, 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              border: 'none',
+              cursor: submitting ? 'not-allowed' : 'pointer'
+            }}
           >
             {submitting ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
-            <span>{submitting ? 'Mengompres & Menyimpan...' : 'Simpan HP Baru ke Dapur aduHP'}</span>
+            <span>
+              {submitting 
+                ? 'Mengompres & Menyimpan...' 
+                : (isForSale ? 'Simpan HP Baru (Dijual aduHP)' : 'Simpan ke Database Pembanding')}
+            </span>
           </button>
         </div>
       </form>
@@ -1065,5 +1187,13 @@ export default function NewProductPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NewProductPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '40px', color: '#888' }}>Memuat form produk...</div>}>
+      <NewProductContent />
+    </Suspense>
   );
 }
