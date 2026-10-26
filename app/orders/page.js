@@ -271,7 +271,7 @@ export default function OrdersPage() {
                       </td>
 
                       <td style={{ padding: '16px' }}>
-                        <div style={{ fontWeight: 700, color: '#fff' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                           {order.customer_name}
                         </div>
                         <div style={{ fontSize: '12px', color: '#aaa', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -284,7 +284,7 @@ export default function OrdersPage() {
                       </td>
 
                       <td style={{ padding: '16px' }}>
-                        <div style={{ fontWeight: 700, color: '#eee' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                           {order.product_name}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--accent-lime)', marginTop: '2px' }}>
@@ -296,11 +296,11 @@ export default function OrdersPage() {
                       </td>
 
                       <td style={{ padding: '16px' }}>
-                        <div style={{ fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)', fontSize: '14px' }}>
+                        <div style={{ fontWeight: 900, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '14px' }}>
                           {formatIDR(order.total_amount)}
                         </div>
                         <div style={{ fontSize: '10px', color: '#888' }}>
-                          Ke: {order.bank_name || 'BCA PT ADU HP'}
+                          Ke: {order.bank_name || 'BCA PT. SECOND CIRCLE TEKNOLOGI'}
                         </div>
                       </td>
 

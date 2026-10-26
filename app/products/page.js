@@ -415,7 +415,7 @@ export default function ProductsPage() {
         ) : displayedProducts.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center' }}>
             <Smartphone size={32} color="#444" style={{ margin: '0 auto 12px' }} />
-            <div style={{ color: '#fff', fontWeight: 600 }}>Tidak ada HP yang cocok</div>
+            <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Tidak ada HP yang cocok</div>
             <p style={{ color: '#666', fontSize: '13px', marginTop: '4px' }}>
               Coba ubah kata kunci pencarian atau filter tier harga yang dipilih.
             </p>
@@ -497,8 +497,8 @@ export default function ProductsPage() {
 
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700, color: '#fff', fontSize: '13.5px' }}>
-                            {p.name}
+                          <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13.5px' }}>
+                            {p.name || `${p.brand || 'Smartphone'} (Tanpa Nama)`}
                           </span>
                           {p.condition === 'second' ? (
                             <span style={{
