@@ -48,19 +48,66 @@ export default function NewSecondProductPage() {
   const [compressingIndices, setCompressingIndices] = useState([]);
   const [previewZoomModal, setPreviewZoomModal] = useState(null);
 
-  // Form State specifically tailored for HP Second Bersertifikat
-  const [formData, setFormData] = useState({
+  const EMPTY_SECOND_FORM = {
+    name: '',
+    brand: '',
+    category: 'HP Second',
+    price_tier: '', // '1-2-jt' | '2-4-jt' | '4-8-jt' | 'flagship'
+    condition: 'second',
+    grade: '',
+    badge: '',
+    battery_health: '',
+    battery_status: '',
+    official_distributor: '',
+    imei: '',
+    imei_status: '',
+    completeness: '',
+    warranty_note: 'Garansi Toko 30 Hari Tukar Unit Baru',
+    price: '',
+    original_price: '',
+    stock: '1',
+    ram_gb: '',
+    storage_gb: '',
+    color: '',
+    description: '',
+    
+    // Hardware Specs
+    chipset: '',
+    display: '',
+    battery: '',
+    camera: '',
+    os: '',
+
+    // AnTuTu & Gaming
+    antutu_total: '',
+    antutu_tier: '',
+    fps_mlbb: '',
+    fps_freefire: '',
+    fps_pubg: '',
+    fps_genshin: '',
+
+    // Checklist QC Lab
+    screen_qc: 'passed',
+    face_finger_qc: 'passed',
+    camera_qc: 'passed',
+    imei_qc: 'passed',
+
+    is_featured: false,
+    is_active: true,
+  };
+
+  const SAMPLE_SECOND_DEMO = {
     name: 'iPhone 13 Pro 256GB Sierra Blue (Second Grade A+)',
     brand: 'Apple',
     category: 'Flagship Smartphone',
-    price_tier: '4-8-jt', // '1-2-jt' | '2-4-jt' | '4-8-jt' | 'flagship'
+    price_tier: '4-8-jt',
     condition: 'second',
     grade: 'Second Grade A+ (Mulus 99% No Dent)',
     badge: 'Lolos 35 Titik QC • BH 92%',
     battery_health: '92',
     battery_status: 'Original Bawaan Pabrik (Sehat)',
     official_distributor: 'Eks Resmi iBox • Garansi Toko 30 Hari Ganti Unit',
-    imei: `35${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
+    imei: '359157671921978',
     imei_status: 'Resmi Kemenperin All Operator Bebas Blokir Selamanya',
     completeness: 'Fullset Dus Box Original + Kabel Bawaan',
     warranty_note: 'Garansi Toko 30 Hari Tukar Unit Baru Jika Ada Kendala Mesin',
@@ -71,31 +118,35 @@ export default function NewSecondProductPage() {
     storage_gb: '256',
     color: 'Sierra Blue',
     description: 'Unit second koleksi mulus 99% tanpa dent atau baret dalam. Layar original True Tone & ProMotion 120Hz 100% aktif tanpa shadow. Face ID kilat. Baterai Health 92% original belum pernah servis atau dibongkar mesin. Lolos 35 titik uji lab aduHP.',
-    
-    // Hardware Specs
     chipset: 'Apple A15 Bionic (5nm 6-core)',
     display: '6.1" Super Retina XDR OLED ProMotion 120Hz',
     battery: '3095 mAh • Battery Health 92%',
     camera: 'Triple 12MP (Tele 3x, Wide OIS, Ultra-Wide) + LiDAR',
     os: 'iOS 18 Ready',
-
-    // AnTuTu & Gaming
     antutu_total: '1320000',
     antutu_tier: 'Flagship Tier',
     fps_mlbb: '120 FPS (Ultra)',
     fps_freefire: '60 FPS (Max)',
     fps_pubg: '90 FPS (Extreme)',
     fps_genshin: '58 FPS (High)',
-
-    // Checklist QC Lab
     screen_qc: 'passed',
     face_finger_qc: 'passed',
     camera_qc: 'passed',
     imei_qc: 'passed',
-
     is_featured: true,
     is_active: true,
-  });
+  };
+
+  // Form State starts completely clean & empty so user doesn't have to backspace
+  const [formData, setFormData] = useState(EMPTY_SECOND_FORM);
+
+  function handleLoadSampleData() {
+    setFormData(SAMPLE_SECOND_DEMO);
+  }
+
+  function handleClearForm() {
+    setFormData(EMPTY_SECOND_FORM);
+  }
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -237,48 +288,57 @@ export default function NewSecondProductPage() {
       const uploadedOrFallback = finalImageUrls.length > 0 ? finalImageUrls : fallbackImages;
 
       // 2. Prepare payload
+      let finalPriceTier = formData.price_tier;
+      if (!finalPriceTier && formData.price) {
+        const p = parseInt(formData.price, 10);
+        if (p < 2000000) finalPriceTier = '1-2-jt';
+        else if (p < 4000000) finalPriceTier = '2-4-jt';
+        else if (p < 8000000) finalPriceTier = '4-8-jt';
+        else finalPriceTier = 'flagship';
+      }
+
       const payload = {
         name: formData.name,
         slug: slugify(formData.name) + '-sec-' + Math.random().toString(36).substring(2, 6),
-        brand: formData.brand,
-        category: formData.category,
-        price_tier: formData.price_tier,
+        brand: formData.brand || 'Lainnya',
+        category: formData.category || 'HP Second',
+        price_tier: finalPriceTier || '4-8-jt',
         condition: 'second',
-        grade: formData.grade,
-        badge: formData.badge,
-        battery_health: parseInt(formData.battery_health, 10) || null,
-        official_distributor: formData.official_distributor,
-        imei: formData.imei,
+        grade: formData.grade || 'Second Grade A (Mulus 95% - 98% Terawat)',
+        badge: formData.badge || (formData.battery_health ? `Lolos 35 Titik QC • BH ${formData.battery_health}%` : 'Lolos 35 Titik QC aduHP'),
+        battery_health: formData.battery_health ? parseInt(formData.battery_health, 10) : null,
+        official_distributor: formData.official_distributor || 'Garansi Toko 30 Hari Tukar Unit',
+        imei: formData.imei || null,
         price: parseInt(formData.price, 10),
         original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
         stock: parseInt(formData.stock, 10) || 1,
-        ram_gb: parseInt(formData.ram_gb, 10) || 6,
-        storage_gb: parseInt(formData.storage_gb, 10) || 128,
-        color: formData.color,
-        description: formData.description,
+        ram_gb: formData.ram_gb ? parseInt(formData.ram_gb, 10) : null,
+        storage_gb: formData.storage_gb ? parseInt(formData.storage_gb, 10) : null,
+        color: formData.color || null,
+        description: formData.description || '',
         images: uploadedOrFallback,
         specs: {
-          chipset: formData.chipset,
-          display: formData.display,
-          battery: formData.battery,
-          camera: formData.camera,
-          os: formData.os,
-          battery_status: formData.battery_status,
-          imei_status: formData.imei_status,
-          completeness: formData.completeness,
-          warranty_note: formData.warranty_note,
+          chipset: formData.chipset || '-',
+          display: formData.display || '-',
+          battery: formData.battery || (formData.battery_health ? `Battery Health ${formData.battery_health}%` : '-'),
+          camera: formData.camera || '-',
+          os: formData.os || '-',
+          battery_status: formData.battery_status || 'Original Bawaan Pabrik',
+          imei_status: formData.imei_status || 'Resmi Kemenperin All Operator Bebas Blokir',
+          completeness: formData.completeness || 'Fullset Unit + Dus Box',
+          warranty_note: formData.warranty_note || 'Garansi Toko 30 Hari Tukar Unit Baru',
           qc_summary: 'Lolos 35 Titik Inspeksi Lab aduHP (Layar, TrueTone, FaceID, Baterai, Kamera)',
         },
         antutu: {
           version: 'AnTuTu Benchmark v10',
           total: parseInt(formData.antutu_total, 10) || 0,
-          tier: formData.antutu_tier
+          tier: formData.antutu_tier || 'Entry/Mid Tier'
         },
         gaming_fps: {
-          mlbb: formData.fps_mlbb,
-          freefire: formData.fps_freefire,
-          pubg: formData.fps_pubg,
-          genshin: formData.fps_genshin
+          mlbb: formData.fps_mlbb || '60 FPS',
+          freefire: formData.fps_freefire || '60 FPS',
+          pubg: formData.fps_pubg || '60 FPS',
+          genshin: formData.fps_genshin || '45 FPS'
         },
         is_featured: formData.is_featured,
         is_active: formData.is_active,
@@ -624,9 +684,56 @@ export default function NewSecondProductPage() {
         {/* BAGIAN 2: IDENTITAS & KONDISI FISIK HP SECOND                   */}
         {/* ============================================================== */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <Smartphone size={16} color="var(--accent-lime)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Unit HP Second & Kondisi Fisik</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Smartphone size={16} color="var(--accent-lime)" />
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Unit HP Second & Kondisi Fisik</h3>
+            </div>
+
+            {/* Quick Demo & Clear Buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleLoadSampleData}
+                style={{
+                  background: 'rgba(198, 255, 0, 0.1)',
+                  border: '1px solid rgba(198, 255, 0, 0.35)',
+                  color: 'var(--accent-lime)',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+                title="Isi form dengan contoh data demo iPhone 13 Pro"
+              >
+                <Sparkles size={12} />
+                <span>✨ Muat Contoh Data (Demo)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleClearForm}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#aaa',
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+                title="Kosongkan form agar bersih untuk input baru"
+              >
+                <Trash2 size={12} />
+                <span>Bersihkan</span>
+              </button>
+            </div>
           </div>
 
           <div className="form-grid">
@@ -645,16 +752,19 @@ export default function NewSecondProductPage() {
 
             <div className="form-group col-4">
               <label className="form-label">Brand *</label>
-              <select name="brand" className="form-select" value={formData.brand} onChange={handleChange}>
-                <option value="Apple">Apple (iPhone)</option>
+              <select name="brand" className="form-select" value={formData.brand} onChange={handleChange} required>
+                <option value="">-- Pilih Brand HP --</option>
+                <option value="OPPO">OPPO</option>
                 <option value="Samsung">Samsung Galaxy</option>
+                <option value="Apple">Apple (iPhone)</option>
                 <option value="Xiaomi">Xiaomi</option>
                 <option value="POCO">POCO</option>
-                <option value="Infinix">Infinix</option>
-                <option value="Realme">Realme</option>
                 <option value="Vivo">Vivo</option>
+                <option value="Realme">Realme</option>
+                <option value="Infinix">Infinix</option>
                 <option value="iQOO">iQOO</option>
                 <option value="Tecno">Tecno</option>
+                <option value="itel">itel</option>
                 <option value="Asus">Asus (ROG/Zenfone)</option>
                 <option value="Google">Google Pixel</option>
               </select>
@@ -663,7 +773,8 @@ export default function NewSecondProductPage() {
             {/* Grade Fisik Unit */}
             <div className="form-group col-6">
               <label className="form-label">Grade Kemulusan Fisik *</label>
-              <select name="grade" className="form-select" value={formData.grade} onChange={handleChange}>
+              <select name="grade" className="form-select" value={formData.grade} onChange={handleChange} required>
+                <option value="">-- Pilih Grade Kemulusan --</option>
                 <option value="Second Grade A+ (Mulus 99% No Dent)">Second Grade A+ (Mulus 99% No Dent / Like New)</option>
                 <option value="Second Grade A (Mulus 95% - 98% Terawat)">Second Grade A (Mulus 95% - 98% Pemakaian Wajar)</option>
                 <option value="Second Grade B (Mulus 90% Ada Baret Tipis)">Second Grade B (Mulus 90% Ada Baret Tipis / Pemakaian Normal)</option>
@@ -680,7 +791,7 @@ export default function NewSecondProductPage() {
                   max="100"
                   name="battery_health"
                   required
-                  placeholder="92"
+                  placeholder="Contoh: 92"
                   className="form-input"
                   style={{ borderColor: 'rgba(0, 229, 255, 0.4)', fontWeight: 800 }}
                   value={formData.battery_health}
@@ -695,7 +806,7 @@ export default function NewSecondProductPage() {
               <input
                 type="text"
                 name="battery_status"
-                placeholder="Original Bawaan Pabrik"
+                placeholder="Contoh: Original Bawaan Pabrik"
                 className="form-input"
                 value={formData.battery_status}
                 onChange={handleChange}
@@ -705,9 +816,10 @@ export default function NewSecondProductPage() {
             {/* Legalitas IMEI */}
             <div className="form-group col-6">
               <label className="form-label">Status Legalitas IMEI *</label>
-              <select name="imei_status" className="form-select" value={formData.imei_status} onChange={handleChange}>
+              <select name="imei_status" className="form-select" value={formData.imei_status} onChange={handleChange} required>
+                <option value="">-- Pilih Status Legalitas IMEI --</option>
                 <option value="Resmi Kemenperin All Operator Bebas Blokir Selamanya">Resmi Kemenperin All Operator Bebas Blokir Selamanya</option>
-                <option value="Eks Garansi Resmi Indonesia (SEIN/iBox/TAM)">Eks Garansi Resmi Indonesia (SEIN / iBox / TAM)</option>
+                <option value="Eks Garansi Resmi Indonesia (SEIN / iBox / TAM / OPPO)">Eks Garansi Resmi Indonesia (SEIN / iBox / TAM / OPPO)</option>
                 <option value="Bea Cukai Resmi Terdaftar Permanen">Bea Cukai Resmi Terdaftar Permanen</option>
               </select>
             </div>
@@ -718,6 +830,7 @@ export default function NewSecondProductPage() {
               <input
                 type="text"
                 name="imei"
+                placeholder="Contoh: 359157671921978"
                 className="form-input"
                 value={formData.imei}
                 onChange={handleChange}
@@ -727,7 +840,8 @@ export default function NewSecondProductPage() {
             {/* Kelengkapan Box */}
             <div className="form-group col-6">
               <label className="form-label">Kelengkapan Unit *</label>
-              <select name="completeness" className="form-select" value={formData.completeness} onChange={handleChange}>
+              <select name="completeness" className="form-select" value={formData.completeness} onChange={handleChange} required>
+                <option value="">-- Pilih Kelengkapan Unit --</option>
                 <option value="Fullset Dus Box Original + Kabel Bawaan">Fullset Dus Box Original + Kabel Bawaan</option>
                 <option value="Fullset Dus Box Original + Charger Komplit">Fullset Dus Box Original + Charger Komplit</option>
                 <option value="Fullset Box OEM + Kabel Baru">Fullset Box OEM + Kabel Baru</option>
@@ -741,7 +855,7 @@ export default function NewSecondProductPage() {
               <input
                 type="text"
                 name="official_distributor"
-                placeholder="Eks Resmi iBox • Garansi Toko 30 Hari Tukar Unit"
+                placeholder="Contoh: Eks Resmi iBox • Garansi Toko 30 Hari Tukar Unit"
                 className="form-input"
                 value={formData.official_distributor}
                 onChange={handleChange}
@@ -755,6 +869,7 @@ export default function NewSecondProductPage() {
                 type="number"
                 name="price"
                 required
+                placeholder="Contoh: 9499000"
                 className="form-input"
                 style={{ borderColor: 'var(--border-lime)', fontWeight: 800, fontSize: '15px' }}
                 value={formData.price}
@@ -767,6 +882,7 @@ export default function NewSecondProductPage() {
               <input
                 type="number"
                 name="original_price"
+                placeholder="Contoh: 18499000"
                 className="form-input"
                 value={formData.original_price}
                 onChange={handleChange}
@@ -774,8 +890,9 @@ export default function NewSecondProductPage() {
             </div>
 
             <div className="form-group col-4">
-              <label className="form-label">Kategori Tier Harga aduhp.com *</label>
+              <label className="form-label">Kategori Tier Harga aduhp.com</label>
               <select name="price_tier" className="form-select" value={formData.price_tier} onChange={handleChange}>
+                <option value="">-- Otomatis Sesuai Harga --</option>
                 <option value="1-2-jt">Rp 1 - 2 Juta (Entry Level Budget)</option>
                 <option value="2-4-jt">Rp 2 - 4 Juta (Mid-Range Sweet Spot)</option>
                 <option value="4-8-jt">Rp 4 - 8 Juta (Flagship Killer & Upper Mid)</option>
@@ -785,17 +902,17 @@ export default function NewSecondProductPage() {
 
             <div className="form-group col-4">
               <label className="form-label">Warna Unit</label>
-              <input type="text" name="color" className="form-input" value={formData.color} onChange={handleChange} />
+              <input type="text" name="color" placeholder="Contoh: Sierra Blue / Midnight Black" className="form-input" value={formData.color} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">RAM (GB)</label>
-              <input type="number" name="ram_gb" className="form-input" value={formData.ram_gb} onChange={handleChange} />
+              <input type="number" name="ram_gb" placeholder="Contoh: 6" className="form-input" value={formData.ram_gb} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">Storage ROM (GB)</label>
-              <input type="number" name="storage_gb" className="form-input" value={formData.storage_gb} onChange={handleChange} />
+              <input type="number" name="storage_gb" placeholder="Contoh: 256" className="form-input" value={formData.storage_gb} onChange={handleChange} />
             </div>
 
             <div className="form-group col-12">
@@ -803,6 +920,7 @@ export default function NewSecondProductPage() {
               <textarea
                 name="description"
                 rows={3}
+                placeholder="Jelaskan kondisi fisik unit, bodi, layar, fungsi kamera, kelengkapan, dll."
                 className="form-input"
                 style={{ resize: 'vertical' }}
                 value={formData.description}
@@ -870,27 +988,27 @@ export default function NewSecondProductPage() {
           <div className="form-grid">
             <div className="form-group col-6">
               <label className="form-label">Chipset & Fabrikasi</label>
-              <input type="text" name="chipset" className="form-input" value={formData.chipset} onChange={handleChange} />
+              <input type="text" name="chipset" placeholder="Contoh: Apple A15 Bionic (5nm) / Snapdragon 8 Gen 2" className="form-input" value={formData.chipset} onChange={handleChange} />
             </div>
 
             <div className="form-group col-6">
               <label className="form-label">Layar & Refresh Rate</label>
-              <input type="text" name="display" className="form-input" value={formData.display} onChange={handleChange} />
+              <input type="text" name="display" placeholder="Contoh: 6.1 inch OLED ProMotion 120Hz" className="form-input" value={formData.display} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">Total Skor AnTuTu v10</label>
-              <input type="number" name="antutu_total" className="form-input" value={formData.antutu_total} onChange={handleChange} />
+              <input type="number" name="antutu_total" placeholder="Contoh: 1320000" className="form-input" value={formData.antutu_total} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">Gaming MLBB (FPS)</label>
-              <input type="text" name="fps_mlbb" className="form-input" value={formData.fps_mlbb} onChange={handleChange} />
+              <input type="text" name="fps_mlbb" placeholder="Contoh: 120 FPS (Ultra)" className="form-input" value={formData.fps_mlbb} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">Gaming Genshin (FPS)</label>
-              <input type="text" name="fps_genshin" className="form-input" value={formData.fps_genshin} onChange={handleChange} />
+              <input type="text" name="fps_genshin" placeholder="Contoh: 58 FPS (High)" className="form-input" value={formData.fps_genshin} onChange={handleChange} />
             </div>
           </div>
         </div>

@@ -44,17 +44,59 @@ export default function NewProductPage() {
   const [compressingIndices, setCompressingIndices] = useState([]);
   const [previewZoomModal, setPreviewZoomModal] = useState(null);
 
-  // Form State aligned with aduhp.com (100% Baru BNIB + AnTuTu v10 + Gaming FPS + 4 Price Tiers)
-  const [formData, setFormData] = useState({
+  const EMPTY_NEW_FORM = {
     name: '',
+    brand: '',
+    category: 'HP Baru',
+    price_tier: '', // '1-2-jt' | '2-4-jt' | '4-8-jt' | 'flagship'
+    condition: 'baru',
+    grade: '100% Baru (BNIB Segel)',
+    badge: '100% Baru BNIB Segel Resmi',
+    official_distributor: '',
+    imei: '',
+    price: '',
+    original_price: '',
+    stock: '1',
+    ram_gb: '',
+    storage_gb: '',
+    color: '',
+    description: '',
+    
+    // Hardware Specs
+    chipset: '',
+    display: '',
+    battery: '',
+    camera: '',
+    os: '',
+
+    // AnTuTu Benchmark v10 (Core Feature aduhp.com)
+    antutu_total: '',
+    antutu_cpu: '',
+    antutu_gpu: '',
+    antutu_memory: '',
+    antutu_ux: '',
+    antutu_tier: '',
+
+    // Gaming FPS Performance
+    fps_mlbb: '',
+    fps_freefire: '',
+    fps_pubg: '',
+    fps_genshin: '',
+
+    is_featured: true,
+    is_active: true,
+  };
+
+  const SAMPLE_NEW_DEMO = {
+    name: 'POCO F6 (12/512GB) Black Titanium',
     brand: 'POCO',
     category: 'Flagship Killer',
-    price_tier: '4-8-jt', // '1-2-jt' | '2-4-jt' | '4-8-jt' | 'flagship'
+    price_tier: '4-8-jt',
     condition: 'baru',
     grade: '100% Baru (BNIB Segel)',
     badge: '100% Baru BNIB Segel Resmi',
     official_distributor: 'TAM Resmi Indonesia 15 Bulan',
-    imei: `35${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
+    imei: '358291039102931',
     price: '5499000',
     original_price: '5999000',
     stock: '15',
@@ -62,31 +104,35 @@ export default function NewProductPage() {
     storage_gb: '512',
     color: 'Black Titanium',
     description: 'Smartphone 100% Baru BNIB Segel Resmi Indonesia. Dilengkapi jaminan IMEI Kemenperin & garansi distributor resmi.',
-    
-    // Hardware Specs
     chipset: 'Snapdragon 8s Gen 3 (4nm TSMC)',
     display: '6.67" Flow AMOLED 1.5K 120Hz CrystalRes',
     battery: '5000 mAh + 90W Turbo Charge',
     camera: '50 MP Sony IMX882 OIS + 8 MP Ultra-Wide',
     os: 'Xiaomi HyperOS (Android 14)',
-
-    // AnTuTu Benchmark v10 (Core Feature aduhp.com)
     antutu_total: '1520000',
     antutu_cpu: '395000',
     antutu_gpu: '520000',
     antutu_memory: '290000',
     antutu_ux: '315000',
     antutu_tier: 'Flagship Killer Tier',
-
-    // Gaming FPS Performance
     fps_mlbb: '120 FPS (Ultra)',
     fps_freefire: '60 FPS (Max)',
     fps_pubg: '90 FPS (Smooth Extreme)',
     fps_genshin: '58.5 FPS (Highest)',
-
     is_featured: true,
     is_active: true,
-  });
+  };
+
+  // Form State starts empty so the user doesn't have to backspace
+  const [formData, setFormData] = useState(EMPTY_NEW_FORM);
+
+  function handleLoadSampleData() {
+    setFormData(SAMPLE_NEW_DEMO);
+  }
+
+  function handleClearForm() {
+    setFormData(EMPTY_NEW_FORM);
+  }
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -214,32 +260,41 @@ export default function NewProductPage() {
       ];
       const uploadedImages = finalImageUrls.length > 0 ? finalImageUrls : fallbackImages;
 
+      let finalPriceTier = formData.price_tier;
+      if (!finalPriceTier && formData.price) {
+        const p = parseInt(formData.price, 10);
+        if (p < 2000000) finalPriceTier = '1-2-jt';
+        else if (p < 4000000) finalPriceTier = '2-4-jt';
+        else if (p < 8000000) finalPriceTier = '4-8-jt';
+        else finalPriceTier = 'flagship';
+      }
+
       const payload = {
         name: formData.name,
-        slug: slugify(formData.name),
-        brand: formData.brand,
-        category: formData.category,
-        price_tier: formData.price_tier,
+        slug: slugify(formData.name) + '-' + Math.random().toString(36).substring(2, 6),
+        brand: formData.brand || 'Lainnya',
+        category: formData.category || 'HP Baru',
+        price_tier: finalPriceTier || '2-4-jt',
         condition: 'baru',
-        grade: formData.grade,
-        badge: formData.badge,
-        official_distributor: formData.official_distributor,
-        imei: formData.imei,
+        grade: '100% Baru (BNIB Segel)',
+        badge: formData.badge || '100% Baru BNIB Segel Resmi',
+        official_distributor: formData.official_distributor || 'Garansi Resmi Distributor Indonesia',
+        imei: formData.imei || null,
         price: parseInt(formData.price, 10),
         original_price: formData.original_price ? parseInt(formData.original_price, 10) : null,
         stock: parseInt(formData.stock, 10) || 1,
-        ram_gb: parseInt(formData.ram_gb, 10) || 8,
-        storage_gb: parseInt(formData.storage_gb, 10) || 256,
-        color: formData.color,
-        description: formData.description,
+        ram_gb: formData.ram_gb ? parseInt(formData.ram_gb, 10) : null,
+        storage_gb: formData.storage_gb ? parseInt(formData.storage_gb, 10) : null,
+        color: formData.color || null,
+        description: formData.description || '',
         images: uploadedImages,
         specs: {
-          chipset: formData.chipset,
-          display: formData.display,
-          battery: formData.battery,
-          camera: formData.camera,
-          os: formData.os,
-          ram_rom: `${formData.ram_gb}GB / ${formData.storage_gb}GB`
+          chipset: formData.chipset || '-',
+          display: formData.display || '-',
+          battery: formData.battery || '-',
+          camera: formData.camera || '-',
+          os: formData.os || '-',
+          ram_rom: formData.ram_gb && formData.storage_gb ? `${formData.ram_gb}GB / ${formData.storage_gb}GB` : '-'
         },
         antutu: {
           version: 'AnTuTu Benchmark v10',
@@ -248,13 +303,13 @@ export default function NewProductPage() {
           gpu: parseInt(formData.antutu_gpu, 10) || 0,
           memory: parseInt(formData.antutu_memory, 10) || 0,
           ux: parseInt(formData.antutu_ux, 10) || 0,
-          tier: formData.antutu_tier
+          tier: formData.antutu_tier || 'Entry/Mid Tier'
         },
         gaming_fps: {
-          mlbb: formData.fps_mlbb,
-          freefire: formData.fps_freefire,
-          pubg: formData.fps_pubg,
-          genshin: formData.fps_genshin
+          mlbb: formData.fps_mlbb || '60 FPS',
+          freefire: formData.fps_freefire || '60 FPS',
+          pubg: formData.fps_pubg || '60 FPS',
+          genshin: formData.fps_genshin || '45 FPS'
         },
         is_featured: formData.is_featured,
         is_active: formData.is_active,
@@ -600,9 +655,56 @@ export default function NewProductPage() {
         {/* BAGIAN 2: IDENTITAS & HARGA                                    */}
         {/* ============================================================== */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <Smartphone size={16} color="var(--accent-lime)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Smartphone & Kategori Harga</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Smartphone size={16} color="var(--accent-lime)" />
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>2. Identitas Smartphone & Kategori Harga</h3>
+            </div>
+
+            {/* Quick Demo & Clear Buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleLoadSampleData}
+                style={{
+                  background: 'rgba(198, 255, 0, 0.1)',
+                  border: '1px solid rgba(198, 255, 0, 0.35)',
+                  color: 'var(--accent-lime)',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+                title="Isi form dengan contoh data demo POCO F6"
+              >
+                <Sparkles size={12} />
+                <span>✨ Muat Contoh Data (Demo)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleClearForm}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#aaa',
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+                title="Kosongkan form agar bersih untuk input baru"
+              >
+                <Trash2 size={12} />
+                <span>Bersihkan</span>
+              </button>
+            </div>
           </div>
 
           <div className="form-grid">
@@ -621,26 +723,29 @@ export default function NewProductPage() {
 
             <div className="form-group col-4">
               <label className="form-label">Brand *</label>
-              <select name="brand" className="form-select" value={formData.brand} onChange={handleChange}>
-                <option value="POCO">POCO</option>
+              <select name="brand" className="form-select" value={formData.brand} onChange={handleChange} required>
+                <option value="">-- Pilih Brand HP --</option>
+                <option value="OPPO">OPPO</option>
                 <option value="Samsung">Samsung</option>
-                <option value="Xiaomi">Xiaomi</option>
                 <option value="Apple">Apple (iPhone)</option>
-                <option value="Infinix">Infinix</option>
-                <option value="Realme">Realme</option>
+                <option value="Xiaomi">Xiaomi</option>
+                <option value="POCO">POCO</option>
                 <option value="Vivo">Vivo</option>
-                <option value="Oppo">OPPO</option>
+                <option value="Realme">Realme</option>
+                <option value="Infinix">Infinix</option>
                 <option value="iQOO">iQOO</option>
                 <option value="Tecno">Tecno</option>
-                <option value="Asus">Asus (ROG/Zenfone)</option>
                 <option value="itel">itel</option>
+                <option value="Asus">Asus (ROG/Zenfone)</option>
+                <option value="Google">Google Pixel</option>
               </select>
             </div>
 
-            {/* Pilihan Tier Harga (1-2jt, 2-4jt, 4-8jt, Flagship) */}
+            {/* Pilihan Tier Harga */}
             <div className="form-group col-6">
-              <label className="form-label">Pilihan Kategori / Tier Harga *</label>
+              <label className="form-label">Pilihan Kategori / Tier Harga</label>
               <select name="price_tier" className="form-select" value={formData.price_tier} onChange={handleChange}>
+                <option value="">-- Otomatis Sesuai Harga --</option>
                 <option value="1-2-jt">Rp 1 - 2 Jutaan (Entry-Level Budget Value)</option>
                 <option value="2-4-jt">Rp 2 - 4 Jutaan (Mid-Range Sweet Spot)</option>
                 <option value="4-8-jt">Rp 4 - 8 Jutaan (Flagship Killer & Upper Mid)</option>
@@ -649,15 +754,16 @@ export default function NewProductPage() {
             </div>
 
             <div className="form-group col-6">
-              <label className="form-label">Garansi Distributor Resmi Indonesia *</label>
+              <label className="form-label">Garansi Distributor Resmi Indonesia</label>
               <select name="official_distributor" className="form-select" value={formData.official_distributor} onChange={handleChange}>
-                <option value="TAM Resmi Indonesia 15 Bulan">TAM Resmi Indonesia (Xiaomi/POCO)</option>
+                <option value="">-- Pilih Garansi Distributor --</option>
+                <option value="OPPO Official Indonesia 1 Tahun">OPPO Official Indonesia</option>
                 <option value="SEIN Resmi Indonesia 1 Tahun">SEIN Resmi Indonesia (Samsung)</option>
                 <option value="iBox / Digimap Resmi 1 Tahun">iBox / Digimap Resmi Indonesia (Apple)</option>
+                <option value="TAM Resmi Indonesia 15 Bulan">TAM Resmi Indonesia (Xiaomi/POCO)</option>
                 <option value="Carlcare Resmi Indonesia 12 Bulan">Carlcare Resmi Indonesia (Infinix/itel/Tecno)</option>
                 <option value="Realme Official Indonesia 1 Tahun">Realme Official Indonesia</option>
                 <option value="Vivo Official Indonesia 1 Tahun">Vivo Official Indonesia</option>
-                <option value="OPPO Official Indonesia 1 Tahun">OPPO Official Indonesia</option>
                 <option value="Asus Official Indonesia 1 Tahun">Asus Official Indonesia</option>
               </select>
             </div>
@@ -668,6 +774,7 @@ export default function NewProductPage() {
                 type="number"
                 name="price"
                 required
+                placeholder="Contoh: 5499000"
                 className="form-input"
                 style={{ borderColor: 'var(--border-lime)', fontWeight: 800 }}
                 value={formData.price}
@@ -680,6 +787,7 @@ export default function NewProductPage() {
               <input
                 type="number"
                 name="original_price"
+                placeholder="Contoh: 5999000"
                 className="form-input"
                 value={formData.original_price}
                 onChange={handleChange}
@@ -691,6 +799,7 @@ export default function NewProductPage() {
               <input
                 type="number"
                 name="stock"
+                placeholder="Contoh: 10"
                 className="form-input"
                 value={formData.stock}
                 onChange={handleChange}
@@ -851,11 +960,11 @@ export default function NewProductPage() {
 
           <div className="form-grid">
             <div className="form-group col-6">
-              <label className="form-label">Chipset & Fabrikasi *</label>
+              <label className="form-label">Chipset & Fabrikasi</label>
               <input
                 type="text"
                 name="chipset"
-                required
+                placeholder="Contoh: Snapdragon 8s Gen 3 (4nm) / Dimensity 8300"
                 className="form-input"
                 value={formData.chipset}
                 onChange={handleChange}
@@ -867,6 +976,7 @@ export default function NewProductPage() {
               <input
                 type="text"
                 name="display"
+                placeholder="Contoh: 6.67 inch AMOLED 1.5K 120Hz"
                 className="form-input"
                 value={formData.display}
                 onChange={handleChange}
@@ -875,27 +985,27 @@ export default function NewProductPage() {
 
             <div className="form-group col-4">
               <label className="form-label">RAM (GB)</label>
-              <input type="number" name="ram_gb" className="form-input" value={formData.ram_gb} onChange={handleChange} />
+              <input type="number" name="ram_gb" placeholder="Contoh: 12" className="form-input" value={formData.ram_gb} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">Storage ROM (GB)</label>
-              <input type="number" name="storage_gb" className="form-input" value={formData.storage_gb} onChange={handleChange} />
+              <input type="number" name="storage_gb" placeholder="Contoh: 512" className="form-input" value={formData.storage_gb} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
               <label className="form-label">Baterai & Charging</label>
-              <input type="text" name="battery" className="form-input" value={formData.battery} onChange={handleChange} />
+              <input type="text" name="battery" placeholder="Contoh: 5000 mAh + 90W Fast Charge" className="form-input" value={formData.battery} onChange={handleChange} />
             </div>
 
             <div className="form-group col-6">
               <label className="form-label">Warna Bodi</label>
-              <input type="text" name="color" className="form-input" value={formData.color} onChange={handleChange} />
+              <input type="text" name="color" placeholder="Contoh: Black Titanium" className="form-input" value={formData.color} onChange={handleChange} />
             </div>
 
             <div className="form-group col-6">
               <label className="form-label">Nomor IMEI Fisik</label>
-              <input type="text" name="imei" className="form-input" value={formData.imei} onChange={handleChange} />
+              <input type="text" name="imei" placeholder="Contoh: 358291039102931" className="form-input" value={formData.imei} onChange={handleChange} />
             </div>
 
             <div className="form-group col-12">
@@ -903,6 +1013,7 @@ export default function NewProductPage() {
               <textarea
                 name="description"
                 rows={3}
+                placeholder="Jelaskan spesifikasi unggulan, fitur kamera, kelengkapan isi box, dll."
                 className="form-input"
                 value={formData.description}
                 onChange={handleChange}

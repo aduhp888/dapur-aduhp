@@ -106,7 +106,7 @@ export default function ProductsPage() {
     );
   });
 
-  const BRANDS = ['all', 'Samsung', 'Apple', 'Xiaomi', 'POCO', 'Infinix', 'Realme', 'Vivo', 'itel', 'iQOO'];
+  const BRANDS = ['all', 'Samsung', 'Apple', 'OPPO', 'Xiaomi', 'POCO', 'Vivo', 'Realme', 'Infinix', 'iQOO', 'Tecno', 'itel', 'Asus', 'Google'];
 
   return (
     <div>
