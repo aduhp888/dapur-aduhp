@@ -273,15 +273,22 @@ export default function EditProductPage() {
           <div className="form-group col-4">
             <label className="form-label">Brand</label>
             <select name="brand" className="form-select" value={formData.brand} onChange={handleChange}>
-              <option value="POCO">POCO</option>
+              <option value="OPPO">OPPO</option>
               <option value="Samsung">Samsung</option>
+              <option value="Apple">Apple (iPhone)</option>
               <option value="Xiaomi">Xiaomi</option>
-              <option value="Infinix">Infinix</option>
-              <option value="Realme">Realme</option>
-              <option value="Apple">Apple</option>
+              <option value="POCO">POCO</option>
               <option value="Vivo">Vivo</option>
-              <option value="itel">itel</option>
+              <option value="Realme">Realme</option>
+              <option value="Infinix">Infinix</option>
               <option value="iQOO">iQOO</option>
+              <option value="Tecno">Tecno</option>
+              <option value="itel">itel</option>
+              <option value="Asus">Asus (ROG/Zenfone)</option>
+              <option value="Google">Google Pixel</option>
+              {formData.brand && !['OPPO', 'Samsung', 'Apple', 'Apple (iPhone)', 'Xiaomi', 'POCO', 'Vivo', 'Realme', 'Infinix', 'iQOO', 'Tecno', 'itel', 'Asus', 'Asus (ROG/Zenfone)', 'Google', 'Google Pixel'].includes(formData.brand) && (
+                <option value={formData.brand}>{formData.brand}</option>
+              )}
             </select>
           </div>
 
