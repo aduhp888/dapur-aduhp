@@ -25,19 +25,23 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedCondition, setSelectedCondition] = useState('all'); // 'all' | 'baru' | 'second'
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedTier, selectedBrand]);
+  }, [selectedTier, selectedBrand, selectedCondition]);
 
   async function fetchProducts() {
     setLoading(true);
     try {
       let query = supabase.from('dapur_products').select('*').order('created_at', { ascending: false });
 
+      if (selectedCondition !== 'all') {
+        query = query.eq('condition', selectedCondition);
+      }
       if (selectedTier !== 'all') {
         query = query.eq('price_tier', selectedTier);
       }
@@ -49,6 +53,9 @@ export default function ProductsPage() {
 
       if (error || !data || data.length === 0) {
         let fallback = [...SEED_PRODUCTS];
+        if (selectedCondition !== 'all') {
+          fallback = fallback.filter(p => p.condition === selectedCondition);
+        }
         if (selectedTier !== 'all') {
           fallback = fallback.filter(p => p.price_tier === selectedTier);
         }
@@ -114,7 +121,7 @@ export default function ProductsPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <a
             href="https://aduhp.com/adu-hp"
             target="_blank"
@@ -122,12 +129,28 @@ export default function ProductsPage() {
             className="btn btn-secondary"
             style={{ borderColor: 'rgba(198, 255, 0, 0.4)', color: '#C6FF00' }}
           >
-            <span>⚔️ Uji di Arena Adu HP</span>
+            <span>⚔️ Arena Adu HP</span>
             <ExternalLink size={13} />
           </a>
+          <Link 
+            href="/products/second" 
+            className="btn"
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(198, 255, 0, 0.15))', 
+              border: '1px solid #00E5FF', 
+              color: '#00E5FF',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>🔄</span>
+            <span>Upload HP Second (5 Foto)</span>
+          </Link>
           <Link href="/products/new" className="btn btn-primary">
             <PlusCircle size={15} />
-            <span>Input HP Baru & AnTuTu</span>
+            <span>Input HP Baru</span>
           </Link>
         </div>
       </div>
@@ -136,6 +159,36 @@ export default function ProductsPage() {
       <div className="table-container">
         {/* Filters */}
         <div className="table-toolbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '14px' }}>
+          
+          {/* Condition Filter Tabs: Semua / HP Baru / HP Second */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSelectedCondition('all')}
+              className={`btn btn-sm ${selectedCondition === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ borderRadius: '8px' }}
+            >
+              Semua Katalog ({products.length})
+            </button>
+            <button
+              onClick={() => setSelectedCondition('baru')}
+              className={`btn btn-sm ${selectedCondition === 'baru' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ borderRadius: '8px' }}
+            >
+              📱 100% Baru BNIB
+            </button>
+            <button
+              onClick={() => setSelectedCondition('second')}
+              className={`btn btn-sm ${selectedCondition === 'second' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                borderRadius: '8px',
+                borderColor: selectedCondition === 'second' ? '#00E5FF' : undefined,
+                color: selectedCondition === 'second' ? '#00E5FF' : undefined
+              }}
+            >
+              🔄 HP Second Lolos QC (5 Foto Terkompresi)
+            </button>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div className="search-input-wrapper" style={{ minWidth: '300px' }}>
               <Search size={15} className="search-icon" />
@@ -242,28 +295,76 @@ export default function ProductsPage() {
                   return (
                     <tr key={p.id}>
                       <td>
-                        <div style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '8px',
-                          background: '#161616',
-                          border: '1px solid var(--border-subtle)',
-                          overflow: 'hidden',
-                        }}>
-                          <img
-                            src={imageSrc}
-                            alt={p.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => {
-                              e.target.src = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=200';
-                            }}
-                          />
+                        <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                          <div style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '8px',
+                            background: '#161616',
+                            border: p.condition === 'second' ? '1px solid #00E5FF' : '1px solid var(--border-subtle)',
+                            overflow: 'hidden',
+                          }}>
+                            <img
+                              src={imageSrc}
+                              alt={p.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.target.src = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=200';
+                              }}
+                            />
+                          </div>
+                          {Array.isArray(p.images) && p.images.length > 1 && (
+                            <span 
+                              title={`${p.images.length} foto fisik diupload`}
+                              style={{
+                                position: 'absolute',
+                                bottom: '-3px',
+                                right: '-3px',
+                                background: '#00E5FF',
+                                color: '#000',
+                                fontSize: '8.5px',
+                                fontWeight: 900,
+                                padding: '1px 4px',
+                                borderRadius: '4px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                              }}
+                            >
+                              {p.images.length}P
+                            </span>
+                          )}
                         </div>
                       </td>
 
                       <td>
-                        <div style={{ fontWeight: 700, color: '#fff', fontSize: '13.5px' }}>
-                          {p.name}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: '#fff', fontSize: '13.5px' }}>
+                            {p.name}
+                          </span>
+                          {p.condition === 'second' ? (
+                            <span style={{
+                              fontSize: '9px',
+                              background: 'rgba(0, 229, 255, 0.15)',
+                              color: '#00E5FF',
+                              border: '1px solid rgba(0, 229, 255, 0.35)',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              fontWeight: 800
+                            }}>
+                              SECOND {p.battery_health ? `• BH ${p.battery_health}%` : ''}
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: '9px',
+                              background: 'rgba(198, 255, 0, 0.12)',
+                              color: 'var(--accent-lime)',
+                              border: '1px solid var(--border-lime)',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              fontWeight: 800
+                            }}>
+                              BNIB BARU
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
                           💻 {p.specs?.chipset || 'Octa-Core'} • {p.specs?.display || ''}

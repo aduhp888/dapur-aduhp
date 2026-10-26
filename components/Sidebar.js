@@ -11,7 +11,8 @@ import {
   Code2, 
   Database,
   ExternalLink,
-  LogOut
+  LogOut,
+  UploadCloud
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -37,6 +38,7 @@ export default function Sidebar() {
     { href: '/', label: 'Dashboard AduHP', icon: LayoutDashboard },
     { href: '/products', label: 'Katalog HP & Benchmark', icon: Smartphone },
     { href: '/products/new', label: 'Input HP Baru & AnTuTu', icon: PlusCircle },
+    { href: '/products/second', label: 'Upload HP Second (5 Foto)', icon: UploadCloud, highlight: true },
     { href: '/checklist', label: 'Verifikasi Segel BNIB (QC)', icon: CheckSquare },
     { href: '/api-docs', label: 'API Mobile (iOS/Android)', icon: Code2 },
     { href: '/schema-setup', label: 'Setup Supabase SQL', icon: Database },
@@ -63,15 +65,21 @@ export default function Sidebar() {
         <div className="nav-label">Manajemen Dapur</div>
         {navLinks.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href) && item.href !== '/products/new');
+          const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`nav-item ${isActive ? 'active' : ''}`}
+              style={item.highlight && !isActive ? { color: '#00E5FF' } : undefined}
             >
-              <Icon size={17} />
+              <Icon size={17} color={item.highlight && !isActive ? '#00E5FF' : undefined} />
               <span>{item.label}</span>
+              {item.highlight && (
+                <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(0, 229, 255, 0.15)', color: '#00E5FF', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+                  5 FOTO
+                </span>
+              )}
             </Link>
           );
         })}
