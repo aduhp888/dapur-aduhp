@@ -24,10 +24,27 @@ import {
   Award,
   Filter,
   ShoppingBag,
-  Scale
+  Scale,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { supabase, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
+
+function getPageNumbers(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
 
 export default function DashboardPage() {
   const [products, setProducts] = useState([]);
@@ -37,6 +54,14 @@ export default function DashboardPage() {
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination state (10 products per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, saleFilter, selectedTier, selectedBrand]);
 
   useEffect(() => {
     fetchProducts();
@@ -155,6 +180,14 @@ export default function DashboardPage() {
       p.imei?.toLowerCase().includes(q)
     );
   });
+
+  // Pagination calculation: 10 products per page
+  const totalItems = displayedProducts.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+  const paginatedProducts = displayedProducts.slice(startIndex, endIndex);
 
   const BRANDS = ['all', 'Samsung', 'Apple', 'OPPO', 'Xiaomi', 'POCO', 'Infinix', 'Realme', 'Vivo', 'Tecno', 'itel', 'iQOO', 'Asus', 'Google'];
 
@@ -404,24 +437,25 @@ export default function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ width: '56px' }}>Foto</th>
-                  <th>Smartphone & Chipset</th>
-                  <th>Status di aduHP</th>
-                  <th>Kategori Harga</th>
-                  <th>Skor AnTuTu v10</th>
-                  <th>Estimasi Gaming FPS</th>
-                  <th>Garansi Distributor</th>
-                  <th>Harga Promo (IDR)</th>
-                  <th>Stok</th>
-                  <th style={{ textAlign: 'right' }}>Aksi & Toggle</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedProducts.map((p) => {
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: '56px' }}>Foto</th>
+                    <th>Smartphone & Chipset</th>
+                    <th>Status di aduHP</th>
+                    <th>Kategori Harga</th>
+                    <th>Skor AnTuTu v10</th>
+                    <th>Estimasi Gaming FPS</th>
+                    <th>Garansi Distributor</th>
+                    <th>Harga Promo (IDR)</th>
+                    <th>Stok</th>
+                    <th style={{ textAlign: 'right' }}>Aksi & Toggle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedProducts.map((p) => {
                   const imageSrc = (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=200';
                   
                   // Color coding for tier
@@ -665,8 +699,131 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Pagination Controls (1 Page 10 Produk) */}
+          {totalItems > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderTop: '1px solid var(--border-subtle)',
+              background: 'var(--bg-card)',
+              flexWrap: 'wrap',
+              gap: '12px',
+            }}>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>
+                  Menampilkan <strong>{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</strong> dari <strong>{totalItems}</strong> smartphone
+                </span>
+                <span style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  background: 'var(--bg-card-hover)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                  fontWeight: 600,
+                }}>
+                  10 produk per halaman
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {/* First page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safeCurrentPage === 1}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '6px 8px', opacity: safeCurrentPage === 1 ? 0.35 : 1, cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  title="Halaman Pertama"
+                >
+                  <ChevronsLeft size={14} />
+                </button>
+
+                {/* Previous page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '6px 10px', gap: '4px', opacity: safeCurrentPage === 1 ? 0.35 : 1, cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  title="Halaman Sebelumnya"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Sebelumnya</span>
+                </button>
+
+                {/* Page number buttons */}
+                <div style={{ display: 'flex', gap: '4px', margin: '0 4px' }}>
+                  {getPageNumbers(safeCurrentPage, totalPages).map((pageNum, idx) => {
+                    if (pageNum === '...') {
+                      return (
+                        <span key={`dots-${idx}`} style={{ padding: '6px 6px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                          ...
+                        </span>
+                      );
+                    }
+                    const isActive = pageNum === safeCurrentPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNum)}
+                        style={{
+                          minWidth: '32px',
+                          height: '32px',
+                          padding: '0 6px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: isActive ? 800 : 500,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: isActive ? '1px solid var(--border-lime)' : '1px solid var(--border-subtle)',
+                          background: isActive ? 'var(--accent-lime)' : 'var(--bg-card-hover)',
+                          color: isActive ? '#000000' : 'var(--text-primary)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '6px 10px', gap: '4px', opacity: safeCurrentPage === totalPages ? 0.35 : 1, cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  title="Halaman Selanjutnya"
+                >
+                  <span>Selanjutnya</span>
+                  <ChevronRight size={14} />
+                </button>
+
+                {/* Last page */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safeCurrentPage === totalPages}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '6px 8px', opacity: safeCurrentPage === totalPages ? 0.35 : 1, cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  title="Halaman Terakhir"
+                >
+                  <ChevronsRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
 
       {/* Integration Guidance Box */}
       <div style={{ marginTop: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>

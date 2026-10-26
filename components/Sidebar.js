@@ -166,7 +166,7 @@ export default function Sidebar() {
       </div>
 
       {/* Footer Info */}
-      <div className="sidebar-footer">
+      <div className="sidebar-footer" style={{ paddingBottom: '28px' }}>
         {/* Theme Mode Switcher */}
         <div style={{
           display: 'flex',
