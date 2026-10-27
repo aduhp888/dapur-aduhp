@@ -578,7 +578,7 @@ export default function ProductsPage() {
                         {p.antutu?.total ? (
                           <div className="badge-antutu">
                             <Flame size={12} />
-                            <span>{p.antutu.total.toLocaleString('id-ID')}</span>
+                            <span>{Number(p.antutu.total).toLocaleString('id-ID')}</span>
                           </div>
                         ) : (
                           <span style={{ fontSize: '11px', color: '#666' }}>-</span>

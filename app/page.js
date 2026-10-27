@@ -278,7 +278,7 @@ export default function DashboardPage() {
           </div>
           <div className="stat-value" style={{ color: '#FF9100' }}>{countCompare} Tipe</div>
           <div className="stat-desc">
-            Data Spek & Skor AnTuTu ({avgAnTuTu.toLocaleString('id-ID')} Avg)
+            Data Spek & Skor AnTuTu ({Number(avgAnTuTu || 0).toLocaleString('id-ID')} Avg)
           </div>
         </div>
 
@@ -558,7 +558,7 @@ export default function DashboardPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <div className="badge-antutu">
                               <Flame size={12} />
-                              <span>{p.antutu.total.toLocaleString('id-ID')} Poin</span>
+                              <span>{Number(p.antutu.total).toLocaleString('id-ID')} Poin</span>
                             </div>
                             <div style={{ fontSize: '9.5px', color: '#888' }}>
                               CPU: {p.antutu.cpu?.toLocaleString('id-ID')} • GPU: {p.antutu.gpu?.toLocaleString('id-ID')}
