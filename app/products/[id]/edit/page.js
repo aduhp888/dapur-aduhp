@@ -402,6 +402,10 @@ export default function EditProductPage() {
     try {
       // 1. Upload new compressed photos to storage
       const finalImageUrls = [];
+      const primaryColor = (colors && colors.length > 0)
+        ? (colors.find(c => c.is_default)?.name || colors[0]?.name)
+        : (formData.color || 'default');
+
       for (let i = 0; i < photos.length; i++) {
         const item = photos[i];
         if (!item) continue;
@@ -409,7 +413,12 @@ export default function EditProductPage() {
         if (item.uploadedUrl) {
           finalImageUrls.push(item.uploadedUrl);
         } else if (item.file) {
-          const res = await uploadCompressedImageToStorage(item);
+          const res = await uploadCompressedImageToStorage(item, {
+            productName: formData.name,
+            color: item.color || primaryColor,
+            condition: formData.condition || 'baru',
+            index: i + 1
+          });
           finalImageUrls.push(res.url);
         }
       }

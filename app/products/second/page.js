@@ -272,7 +272,12 @@ export default function NewSecondProductPage() {
         if (item.uploadedUrl) {
           finalImageUrls.push(item.uploadedUrl);
         } else {
-          const res = await uploadCompressedImageToStorage(item);
+          const res = await uploadCompressedImageToStorage(item, {
+            productName: formData.name,
+            color: item.color || formData.color || 'default',
+            condition: formData.grade || formData.condition || 'second',
+            index: i + 1
+          });
           finalImageUrls.push(res.url);
         }
       }
