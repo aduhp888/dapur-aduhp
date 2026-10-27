@@ -16,7 +16,11 @@ import {
   Phone,
   MapPin,
   Package,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle,
+  Ban,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
@@ -28,6 +32,8 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+  const [confirmCancel, setConfirmCancel] = useState(null);
+  const [statusFeedback, setStatusFeedback] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -87,22 +93,83 @@ export default function OrdersPage() {
     }
   }
 
-  async function updateOrderStatus(orderId, newStatus) {
+  async function updateOrderStatus(orderId, newStatus, reason = null) {
     setUpdatingId(orderId);
     try {
+      const updatePayload = { payment_status: newStatus };
+      if (reason) {
+        updatePayload.notes = reason;
+      }
+
       await supabase
         .from('dapur_orders')
-        .update({ payment_status: newStatus })
+        .update(updatePayload)
         .eq('id', orderId);
 
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: newStatus } : o));
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, payment_status: newStatus }));
+      // If order is cancelled and not previously cancelled, attempt stock restore in dapur_products
+      if (newStatus === 'dibatalkan' && selectedOrder && selectedOrder.payment_status !== 'dibatalkan' && selectedOrder.product_id) {
+        try {
+          const { data: prodData } = await supabase
+            .from('dapur_products')
+            .select('stock, variants_json')
+            .eq('id', selectedOrder.product_id)
+            .single();
+
+          if (prodData) {
+            const qtyToRestore = selectedOrder.quantity || 1;
+            const updatedStock = (prodData.stock || 0) + qtyToRestore;
+            let updatedVariantsJson = prodData.variants_json;
+
+            if (Array.isArray(updatedVariantsJson) && selectedOrder.variant_ram) {
+              updatedVariantsJson = updatedVariantsJson.map(v => {
+                if (v.ram === selectedOrder.variant_ram && v.storage === selectedOrder.variant_storage) {
+                  const newVariantStock = (v.stock || 0) + qtyToRestore;
+                  let newColorStocks = { ...(v.color_stocks || {}) };
+                  if (selectedOrder.variant_color && newColorStocks[selectedOrder.variant_color] !== undefined) {
+                    newColorStocks[selectedOrder.variant_color] = (newColorStocks[selectedOrder.variant_color] || 0) + qtyToRestore;
+                  }
+                  return { ...v, stock: newVariantStock, color_stocks: newColorStocks };
+                }
+                return v;
+              });
+            }
+
+            await supabase
+              .from('dapur_products')
+              .update({ stock: updatedStock, variants_json: updatedVariantsJson })
+              .eq('id', selectedOrder.product_id);
+          }
+        } catch (stockErr) {
+          console.warn('Stock restore warning:', stockErr);
+        }
       }
+
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: newStatus, notes: reason || o.notes } : o));
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder(prev => ({ ...prev, payment_status: newStatus, notes: reason || prev.notes }));
+      }
+
+      const statusLabels = {
+        'pembayaran_diverifikasi': '✓ Pembayaran Lunas (Diverifikasi)',
+        'dikemas': '📦 Sedang Dikemas Kayu Logistik',
+        'dikirim': '🚀 Pesanan Sudah Dikirim',
+        'dibatalkan': reason ? `🚫 ${reason}` : '🚫 Pesanan Dibatalkan'
+      };
+
+      setStatusFeedback({
+        message: `Status berhasil diubah: ${statusLabels[newStatus] || newStatus}`,
+        type: newStatus === 'dibatalkan' ? 'warning' : 'success'
+      });
+
+      setTimeout(() => {
+        setStatusFeedback(null);
+      }, 5000);
     } catch (err) {
       console.warn('Error updating status:', err);
+      alert('Gagal update status: ' + (err.message || 'Error'));
     } finally {
       setUpdatingId(null);
+      setConfirmCancel(null);
     }
   }
 
@@ -201,10 +268,12 @@ export default function OrdersPage() {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {[
             { id: 'all', label: 'Semua Status' },
-            { id: 'menunggu_verifikasi', label: 'Perlu Verifikasi Transfer' },
+            { id: 'menunggu_verifikasi', label: 'Perlu Verifikasi' },
             { id: 'pembayaran_diverifikasi', label: 'Siap Packing' },
+            { id: 'dikemas', label: 'Sedang Dikemas' },
             { id: 'dikirim', label: 'Dalam Pengiriman' },
-            { id: 'menunggu_pembayaran', label: 'Belum Bayar' }
+            { id: 'menunggu_pembayaran', label: 'Belum Bayar' },
+            { id: 'dibatalkan', label: 'Dibatalkan / Kadaluarsa' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -313,9 +382,21 @@ export default function OrdersPage() {
                           borderRadius: '100px',
                           fontSize: '11px',
                           fontWeight: 700,
-                          background: isVerified ? 'rgba(52, 199, 89, 0.15)' : isWaitingProof ? 'rgba(255, 179, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                          color: isVerified ? '#34C759' : isWaitingProof ? '#FFB300' : '#888',
-                          border: isVerified ? '1px solid rgba(52, 199, 89, 0.3)' : isWaitingProof ? '1px solid rgba(255, 179, 0, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
+                          background: isVerified ? 'rgba(52, 199, 89, 0.15)' : 
+                                      order.payment_status === 'dikemas' ? 'rgba(179, 136, 255, 0.15)' : 
+                                      order.payment_status === 'dikirim' ? 'rgba(198, 255, 0, 0.15)' : 
+                                      order.payment_status === 'dibatalkan' ? 'rgba(255, 69, 58, 0.15)' : 
+                                      isWaitingProof ? 'rgba(255, 179, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          color: isVerified ? '#34C759' : 
+                                 order.payment_status === 'dikemas' ? '#B388FF' : 
+                                 order.payment_status === 'dikirim' ? 'var(--accent-lime)' : 
+                                 order.payment_status === 'dibatalkan' ? '#FF453A' : 
+                                 isWaitingProof ? '#FFB300' : '#888',
+                          border: isVerified ? '1px solid rgba(52, 199, 89, 0.3)' : 
+                                  order.payment_status === 'dikemas' ? '1px solid rgba(179, 136, 255, 0.3)' : 
+                                  order.payment_status === 'dikirim' ? '1px solid rgba(198, 255, 0, 0.3)' : 
+                                  order.payment_status === 'dibatalkan' ? '1px solid rgba(255, 69, 58, 0.3)' : 
+                                  isWaitingProof ? '1px solid rgba(255, 179, 0, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
                         }}>
                           <span>●</span>
                           <span>
@@ -324,6 +405,7 @@ export default function OrdersPage() {
                             {order.payment_status === 'pembayaran_diverifikasi' && 'Lunas (Siap Packing)'}
                             {order.payment_status === 'dikemas' && 'Sedang Dikemas Kayu'}
                             {order.payment_status === 'dikirim' && 'Sudah Dikirim'}
+                            {order.payment_status === 'dibatalkan' && (order.notes?.includes('30 Menit') ? '⏰ Kadaluarsa 30m' : '🚫 Dibatalkan')}
                           </span>
                         </span>
                       </td>
@@ -408,59 +490,381 @@ export default function OrdersPage() {
               </div>
             </div>
 
+            {/* Feedback Alert Banner */}
+            {statusFeedback && (
+              <div style={{
+                background: statusFeedback.type === 'warning' ? 'rgba(255, 69, 58, 0.15)' : 'rgba(52, 199, 89, 0.15)',
+                border: `1.5px solid ${statusFeedback.type === 'warning' ? 'rgba(255, 69, 58, 0.45)' : 'rgba(52, 199, 89, 0.45)'}`,
+                color: statusFeedback.type === 'warning' ? '#FF6B6B' : '#34C759',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                animation: 'orderSuccessSlideDown 0.3s ease',
+                fontSize: '12.5px',
+                fontWeight: 800
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={16} />
+                  <span>{statusFeedback.message}</span>
+                </div>
+                <button
+                  onClick={() => setStatusFeedback(null)}
+                  style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Stepper Progress / Cancelled State */}
+            {selectedOrder.payment_status === 'dibatalkan' ? (
+              <div style={{
+                background: 'rgba(255, 69, 58, 0.12)',
+                border: '1px solid rgba(255, 69, 58, 0.35)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                marginBottom: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                animation: 'orderSuccessSlideDown 0.3s ease'
+              }}>
+                <AlertTriangle size={24} color="#FF453A" />
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#FF453A' }}>
+                    STATUS: PESANAN DIBATALKAN
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginTop: '2px' }}>
+                    Keterangan: {selectedOrder.notes || 'Dibatalkan oleh Pengguna / Batas Waktu Habis'}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                background: '#0c0c10',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '14px 16px',
+                marginBottom: '18px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                  {[
+                    { label: 'Menunggu', icon: Clock, active: selectedOrder.payment_status === 'menunggu_verifikasi' || selectedOrder.payment_status === 'menunggu_pembayaran', done: selectedOrder.payment_status === 'pembayaran_diverifikasi' || selectedOrder.payment_status === 'dikemas' || selectedOrder.payment_status === 'dikirim' },
+                    { label: 'Verifikasi Lunas', icon: CheckCircle2, active: selectedOrder.payment_status === 'pembayaran_diverifikasi', done: selectedOrder.payment_status === 'dikemas' || selectedOrder.payment_status === 'dikirim' },
+                    { label: 'Dikemas Kayu', icon: Package, active: selectedOrder.payment_status === 'dikemas', done: selectedOrder.payment_status === 'dikirim' },
+                    { label: 'Sudah Dikirim', icon: Truck, active: selectedOrder.payment_status === 'dikirim', done: false }
+                  ].map((step, idx) => {
+                    const IconComp = step.icon;
+                    return (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, position: 'relative', zIndex: 1 }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: step.active 
+                            ? (idx === 1 ? '#34C759' : idx === 2 ? '#B388FF' : idx === 3 ? 'var(--accent-lime)' : '#FFB300')
+                            : step.done 
+                              ? '#34C759' 
+                              : '#1c1c24',
+                          color: step.active 
+                            ? (idx === 2 ? '#fff' : '#000') 
+                            : step.done 
+                              ? '#000' 
+                              : '#666',
+                          border: step.active ? '2px solid #fff' : '1px solid rgba(255, 255, 255, 0.1)',
+                          boxShadow: step.active ? '0 0 14px rgba(255, 255, 255, 0.4)' : 'none',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          <IconComp size={15} />
+                        </div>
+                        <span style={{
+                          fontSize: '10.5px',
+                          marginTop: '6px',
+                          fontWeight: step.active ? 800 : 600,
+                          color: step.active ? '#fff' : step.done ? '#34C759' : '#777',
+                          textAlign: 'center'
+                        }}>
+                          {step.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Quick Actions */}
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '8px', fontWeight: 700 }}>
-                Ubah Status Transaksi:
+                Ubah Status Transaksi (Jalur Pemrosesan):
               </label>
+              
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {/* 1. Verifikasi Lunas */}
                 <button
                   onClick={() => updateOrderStatus(selectedOrder.id, 'pembayaran_diverifikasi')}
+                  className={selectedOrder.payment_status === 'pembayaran_diverifikasi' ? 'order-btn-active-green' : ''}
+                  disabled={updatingId === selectedOrder.id}
                   style={{
-                    background: '#34C759',
-                    color: '#000',
-                    border: 'none',
-                    padding: '8px 14px',
+                    position: 'relative',
+                    background: selectedOrder.payment_status === 'pembayaran_diverifikasi' 
+                      ? 'linear-gradient(135deg, #34C759 0%, #28a745 100%)' 
+                      : 'rgba(52, 199, 89, 0.12)',
+                    color: selectedOrder.payment_status === 'pembayaran_diverifikasi' ? '#000000' : '#34C759',
+                    border: selectedOrder.payment_status === 'pembayaran_diverifikasi' 
+                      ? '2px solid #ffffff' 
+                      : '1.5px solid rgba(52, 199, 89, 0.45)',
+                    padding: '9px 14px',
                     borderRadius: '8px',
                     fontWeight: 800,
                     fontSize: '12px',
-                    cursor: 'pointer'
+                    cursor: updatingId === selectedOrder.id ? 'wait' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: selectedOrder.payment_status === 'pembayaran_diverifikasi' 
+                      ? '0 0 18px rgba(52, 199, 89, 0.55)' 
+                      : 'none',
+                    transform: selectedOrder.payment_status === 'pembayaran_diverifikasi' ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
+                  title="Verifikasi dana pembayaran resmi telah masuk rekening PT"
                 >
-                  ✓ Verifikasi Lunas
+                  <span>✓ Verifikasi Lunas</span>
+                  {selectedOrder.payment_status === 'pembayaran_diverifikasi' && (
+                    <span style={{ fontSize: '9px', background: '#000', color: '#34C759', padding: '1px 5px', borderRadius: '100px', fontWeight: 900 }}>
+                      ● AKTIF
+                    </span>
+                  )}
                 </button>
 
+                {/* 2. Sedang Dikemas Kayu */}
                 <button
                   onClick={() => updateOrderStatus(selectedOrder.id, 'dikemas')}
+                  className={selectedOrder.payment_status === 'dikemas' ? 'order-btn-active-purple' : ''}
+                  disabled={updatingId === selectedOrder.id}
                   style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
-                    border: '1px solid #444',
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    fontSize: '12px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  📦 Sedang Dikemas Kayu
-                </button>
-
-                <button
-                  onClick={() => updateOrderStatus(selectedOrder.id, 'dikirim')}
-                  style={{
-                    background: 'var(--accent-lime)',
-                    color: '#000',
-                    border: 'none',
-                    padding: '8px 14px',
+                    position: 'relative',
+                    background: selectedOrder.payment_status === 'dikemas' 
+                      ? 'linear-gradient(135deg, #B388FF 0%, #7C4DFF 100%)' 
+                      : 'rgba(179, 136, 255, 0.12)',
+                    color: selectedOrder.payment_status === 'dikemas' ? '#ffffff' : '#B388FF',
+                    border: selectedOrder.payment_status === 'dikemas' 
+                      ? '2px solid #ffffff' 
+                      : '1.5px solid rgba(179, 136, 255, 0.45)',
+                    padding: '9px 14px',
                     borderRadius: '8px',
                     fontWeight: 800,
                     fontSize: '12px',
-                    cursor: 'pointer'
+                    cursor: updatingId === selectedOrder.id ? 'wait' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: selectedOrder.payment_status === 'dikemas' 
+                      ? '0 0 18px rgba(179, 136, 255, 0.55)' 
+                      : 'none',
+                    transform: selectedOrder.payment_status === 'dikemas' ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
+                  title="Tandai unit sedang dipacking kayu dan bubble wrap di gudang"
                 >
-                  🚀 Tandai Sudah Dikirim
+                  <span>📦 Sedang Dikemas Kayu</span>
+                  {selectedOrder.payment_status === 'dikemas' && (
+                    <span style={{ fontSize: '9px', background: '#000', color: '#B388FF', padding: '1px 5px', borderRadius: '100px', fontWeight: 900 }}>
+                      ● AKTIF
+                    </span>
+                  )}
                 </button>
+
+                {/* 3. Tandai Sudah Dikirim */}
+                <button
+                  onClick={() => updateOrderStatus(selectedOrder.id, 'dikirim')}
+                  className={selectedOrder.payment_status === 'dikirim' ? 'order-btn-active-lime' : ''}
+                  disabled={updatingId === selectedOrder.id}
+                  style={{
+                    position: 'relative',
+                    background: selectedOrder.payment_status === 'dikirim' 
+                      ? 'linear-gradient(135deg, #C6FF00 0%, #AEEA00 100%)' 
+                      : 'rgba(198, 255, 0, 0.12)',
+                    color: selectedOrder.payment_status === 'dikirim' ? '#000000' : 'var(--accent-lime)',
+                    border: selectedOrder.payment_status === 'dikirim' 
+                      ? '2px solid #ffffff' 
+                      : '1.5px solid rgba(198, 255, 0, 0.45)',
+                    padding: '9px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 800,
+                    fontSize: '12px',
+                    cursor: updatingId === selectedOrder.id ? 'wait' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: selectedOrder.payment_status === 'dikirim' 
+                      ? '0 0 20px rgba(198, 255, 0, 0.65)' 
+                      : 'none',
+                    transform: selectedOrder.payment_status === 'dikirim' ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  title="Tandai paket telah diserahkan ke kurir ekspedisi"
+                >
+                  <span>🚀 Tandai Sudah Dikirim</span>
+                  {selectedOrder.payment_status === 'dikirim' && (
+                    <span style={{ fontSize: '9px', background: '#000', color: '#C6FF00', padding: '1px 5px', borderRadius: '100px', fontWeight: 900 }}>
+                      ● AKTIF
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Sub-Section: Pembatalan & Timeout 30 Menit */}
+              <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+                <label style={{ display: 'block', fontSize: '11px', color: '#FF6B6B', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  ⚠️ Pembatalan & Batas Waktu Transaksi:
+                </label>
+                
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {/* Tombol Cancel: Dibatalkan Pengguna */}
+                  <button
+                    type="button"
+                    onClick={() => setConfirmCancel({ reason: 'Dibatalkan oleh Pengguna (Permintaan Pembeli)', type: 'user_cancel' })}
+                    className={selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('Pengguna') ? 'order-btn-active-red' : ''}
+                    disabled={updatingId === selectedOrder.id}
+                    style={{
+                      background: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('Pengguna') 
+                        ? '#FF453A' 
+                        : 'rgba(255, 69, 58, 0.1)',
+                      color: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('Pengguna') 
+                        ? '#ffffff' 
+                        : '#FF6B6B',
+                      border: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('Pengguna') 
+                        ? '2px solid #ffffff' 
+                        : '1.5px solid rgba(255, 69, 58, 0.35)',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '11.5px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('Pengguna') 
+                        ? '0 0 16px rgba(255, 69, 58, 0.5)' 
+                        : 'none'
+                    }}
+                    title="Batalkan pesanan berdasarkan permintaan pembeli/pengguna"
+                  >
+                    <Ban size={13} />
+                    <span>Dibatalkan Pengguna</span>
+                    {selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('Pengguna') && (
+                      <span style={{ fontSize: '9px', background: '#000', color: '#FF453A', padding: '1px 5px', borderRadius: '100px', fontWeight: 900 }}>
+                        AKTIF
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Tombol Cancel: Waktu 30 Menit Habis (Kadaluarsa) */}
+                  <button
+                    type="button"
+                    onClick={() => setConfirmCancel({ reason: 'Kadaluarsa: Batas Waktu Pembayaran 30 Menit Telah Habis', type: 'timeout_30m' })}
+                    className={selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('30 Menit') ? 'order-btn-active-amber' : ''}
+                    disabled={updatingId === selectedOrder.id}
+                    style={{
+                      background: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('30 Menit') 
+                        ? '#FF9F0A' 
+                        : 'rgba(255, 159, 10, 0.1)',
+                      color: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('30 Menit') 
+                        ? '#000000' 
+                        : '#FFA726',
+                      border: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('30 Menit') 
+                        ? '2px solid #ffffff' 
+                        : '1.5px solid rgba(255, 159, 10, 0.35)',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '11.5px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('30 Menit') 
+                        ? '0 0 16px rgba(255, 159, 10, 0.5)' 
+                        : 'none'
+                    }}
+                    title="Batalkan pesanan karena batas waktu pembayaran 30 menit telah berakhir"
+                  >
+                    <Clock size={13} />
+                    <span>Waktu 30 Menit Habis</span>
+                    {selectedOrder.payment_status === 'dibatalkan' && selectedOrder.notes?.includes('30 Menit') && (
+                      <span style={{ fontSize: '9px', background: '#000', color: '#FFA726', padding: '1px 5px', borderRadius: '100px', fontWeight: 900 }}>
+                        AKTIF
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Konfirmasi Pembatalan Interaktif */}
+                {confirmCancel && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '12px 14px',
+                    background: 'rgba(255, 69, 58, 0.14)',
+                    border: '1.5px solid rgba(255, 69, 58, 0.5)',
+                    borderRadius: '10px',
+                    animation: 'orderSuccessSlideDown 0.25s ease'
+                  }}>
+                    <div style={{ fontSize: '12.5px', color: '#fff', fontWeight: 700, marginBottom: '4px' }}>
+                      ⚠️ Konfirmasi Pembatalan Transaksi #{selectedOrder.order_number}:
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#ddd', marginBottom: '10px', lineHeight: 1.4 }}>
+                      Alasan: <strong>{confirmCancel.reason}</strong>
+                      <br />
+                      <span style={{ color: 'var(--accent-lime)', fontSize: '11px' }}>
+                        ℹ️ Stok fisik unit HP akan otomatis dikembalikan ke inventaris gudang Dapur aduHP.
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'dibatalkan', confirmCancel.reason)}
+                        style={{
+                          background: '#FF453A',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          fontWeight: 800,
+                          fontSize: '11.5px',
+                          cursor: 'pointer',
+                          boxShadow: '0 0 12px rgba(255, 69, 58, 0.45)'
+                        }}
+                      >
+                        Ya, Batalkan Sekarang
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmCancel(null)}
+                        style={{
+                          background: 'transparent',
+                          color: '#aaa',
+                          border: '1px solid #555',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '11.5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

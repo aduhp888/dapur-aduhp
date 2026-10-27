@@ -1181,5 +1181,112 @@ td {
   color: inherit !important;
 }
 
+/* Order Management Micro-Animations */
+@keyframes orderStatusPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(52, 199, 89, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes orderPurplePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(179, 136, 255, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(179, 136, 255, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(179, 136, 255, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes orderLimePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(198, 255, 0, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(198, 255, 0, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(198, 255, 0, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes orderRedPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 69, 58, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 69, 58, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes orderAmberPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 159, 10, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 159, 10, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 159, 10, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes orderSuccessSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.order-btn-active-green {
+  animation: orderStatusPulse 2s infinite ease-in-out;
+}
+
+.order-btn-active-purple {
+  animation: orderPurplePulse 2s infinite ease-in-out;
+}
+
+.order-btn-active-lime {
+  animation: orderLimePulse 2s infinite ease-in-out;
+}
+
+.order-btn-active-red {
+  animation: orderRedPulse 2s infinite ease-in-out;
+}
+
+.order-btn-active-amber {
+  animation: orderAmberPulse 2s infinite ease-in-out;
+}
+
 
 
