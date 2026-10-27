@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -184,7 +184,41 @@ function NewProductContent() {
     handleAddColor(presetName, presetHex);
   }
 
+  function handleVariantColorStockChange(variantId, colorId, stockValue) {
+    setVariants(prev => prev.map(v => {
+      if (v.id !== variantId) return v;
+      const currentStocks = { ...(v.color_stocks || {}) };
+      currentStocks[colorId] = stockValue;
+      const total = Object.values(currentStocks).reduce((sum, val) => sum + (parseInt(val, 10) || 0), 0);
+      return {
+        ...v,
+        color_stocks: currentStocks,
+        stock: String(total)
+      };
+    }));
+  }
+
+  function handleQuickFillVariantStock(variantId, defaultVal = 5) {
+    setVariants(prev => prev.map(v => {
+      if (v.id !== variantId) return v;
+      const currentStocks = { ...(v.color_stocks || {}) };
+      colors.forEach(c => {
+        currentStocks[c.id] = String(defaultVal);
+      });
+      const total = Object.values(currentStocks).reduce((sum, val) => sum + (parseInt(val, 10) || 0), 0);
+      return {
+        ...v,
+        color_stocks: currentStocks,
+        stock: String(total)
+      };
+    }));
+  }
+
   function handleAddVariant() {
+    const initialColorStocks = {};
+    colors.forEach(c => {
+      initialColorStocks[c.id] = '0';
+    });
     setVariants(prev => [
       ...prev,
       {
@@ -193,6 +227,7 @@ function NewProductContent() {
         storage: formData.storage_gb || '256',
         price: formData.price || '',
         stock: '0',
+        color_stocks: initialColorStocks,
         is_default: prev.length === 0
       }
     ]);
@@ -221,13 +256,25 @@ function NewProductContent() {
       alert('Silakan isi kolom RAM & Storage pada form terlebih dahulu.');
       return;
     }
+    const baseStock = formData.stock || '5';
+    const initialColorStocks = {};
+    if (colors.length > 0) {
+      colors.forEach(c => {
+        initialColorStocks[c.id] = baseStock;
+      });
+    }
+    const totalStock = colors.length > 0
+      ? String(colors.length * (parseInt(baseStock, 10) || 0))
+      : baseStock;
+
     setVariants([
       {
         id: Date.now(),
         ram: formData.ram_gb || '8',
         storage: formData.storage_gb || '256',
         price: formData.price || '',
-        stock: formData.stock || '5',
+        stock: totalStock,
+        color_stocks: initialColorStocks,
         is_default: true
       }
     ]);
@@ -235,15 +282,15 @@ function NewProductContent() {
 
   function handleLoadSampleData() {
     setFormData(SAMPLE_NEW_DEMO);
-    setVariants([
-      { id: 1, ram: '8', storage: '256', price: '4899000', stock: '0', is_default: false },
-      { id: 2, ram: '12', storage: '512', price: '5499000', stock: '15', is_default: true },
-      { id: 3, ram: '16', storage: '1024', price: '6499000', stock: '0', is_default: false },
-    ]);
     setColors([
       { id: 1, name: 'Black Titanium', hex: '#1C1C1E', is_default: true },
       { id: 2, name: 'White Titanium', hex: '#E5E7EB', is_default: false },
       { id: 3, name: 'Titanium Silver', hex: '#B0B0B5', is_default: false },
+    ]);
+    setVariants([
+      { id: 1, ram: '8', storage: '256', price: '4899000', stock: '0', color_stocks: { 1: '0', 2: '0', 3: '0' }, is_default: false },
+      { id: 2, ram: '12', storage: '512', price: '5499000', stock: '15', color_stocks: { 1: '5', 2: '5', 3: '5' }, is_default: true },
+      { id: 3, ram: '16', storage: '1024', price: '6499000', stock: '0', color_stocks: { 1: '0', 2: '0', 3: '0' }, is_default: false },
     ]);
   }
 
@@ -401,43 +448,75 @@ function NewProductContent() {
         else finalPriceTier = 'flagship';
       }
 
-      // Format custom variants if defined
-      let finalVariants = [];
-      if (variants.length > 0) {
-        finalVariants = variants.map(v => ({
-          ram: parseInt(v.ram, 10) || 0,
-          storage: parseInt(v.storage, 10) || 0,
-          label: `${v.ram}GB / ${v.storage}GB`,
-          price: parseInt(v.price, 10) || 0,
-          stock: parseInt(v.stock, 10) || 0,
-          isDefault: !!v.is_default
-        }));
-      } else if (formData.ram_gb && formData.storage_gb) {
-        finalVariants = [{
-          ram: parseInt(formData.ram_gb, 10) || 8,
-          storage: parseInt(formData.storage_gb, 10) || 256,
-          label: `${formData.ram_gb}GB / ${formData.storage_gb}GB`,
-          price: formData.price ? parseInt(formData.price, 10) : 0,
-          stock: isForSale ? (parseInt(formData.stock, 10) || 0) : 0,
-          isDefault: true
-        }];
-      }
-
-      // Format custom colors if defined
-      let finalColors = [];
+      // Format custom colors first
+      let rawColors = [];
       if (colors.length > 0) {
-        finalColors = colors.filter(c => c.name && c.name.trim()).map(c => ({
+        rawColors = colors.filter(c => c.name && c.name.trim()).map(c => ({
+          _origId: c.id,
           name: c.name.trim(),
           hex: c.hex || '#1C1C1E',
           isDefault: !!c.is_default
         }));
       } else if (formData.color) {
-        finalColors = [{
+        rawColors = [{
+          _origId: 'default',
           name: formData.color.trim(),
           hex: '#1C1C1E',
           isDefault: true
         }];
       }
+
+      // Format custom variants with color_stocks
+      let finalVariants = [];
+      if (variants.length > 0) {
+        finalVariants = variants.map(v => {
+          const colorStocks = rawColors.map(c => {
+            const stockVal = v.color_stocks?.[c._origId] !== undefined
+              ? (parseInt(v.color_stocks[c._origId], 10) || 0)
+              : (v.color_stocks?.[c.name] !== undefined ? (parseInt(v.color_stocks[c.name], 10) || 0) : 0);
+            return {
+              name: c.name,
+              hex: c.hex,
+              stock: stockVal
+            };
+          });
+
+          const totalCalculatedStock = colorStocks.length > 0
+            ? colorStocks.reduce((sum, cs) => sum + cs.stock, 0)
+            : (parseInt(v.stock, 10) || 0);
+
+          return {
+            ram: parseInt(v.ram, 10) || 0,
+            storage: parseInt(v.storage, 10) || 0,
+            label: `${v.ram}GB / ${v.storage}GB`,
+            price: parseInt(v.price, 10) || 0,
+            stock: totalCalculatedStock,
+            color_stocks: colorStocks,
+            isDefault: !!v.is_default
+          };
+        });
+      } else if (formData.ram_gb && formData.storage_gb) {
+        const defaultColorStocks = rawColors.map(c => ({
+          name: c.name,
+          hex: c.hex,
+          stock: isForSale ? (parseInt(formData.stock, 10) || 0) : 0
+        }));
+        const totalCalculatedStock = defaultColorStocks.length > 0
+          ? defaultColorStocks.reduce((sum, cs) => sum + cs.stock, 0)
+          : (isForSale ? (parseInt(formData.stock, 10) || 0) : 0);
+
+        finalVariants = [{
+          ram: parseInt(formData.ram_gb, 10) || 8,
+          storage: parseInt(formData.storage_gb, 10) || 256,
+          label: `${formData.ram_gb}GB / ${formData.storage_gb}GB`,
+          price: formData.price ? parseInt(formData.price, 10) : 0,
+          stock: totalCalculatedStock,
+          color_stocks: defaultColorStocks,
+          isDefault: true
+        }];
+      }
+
+      const finalColors = rawColors.map(({ _origId, ...rest }) => rest);
 
       const defaultVariant = finalVariants.find(v => v.isDefault) || finalVariants[0];
       const defaultColor = finalColors.find(c => c.isDefault) || finalColors[0];
@@ -1399,96 +1478,235 @@ function NewProductContent() {
                   </thead>
                   <tbody>
                     {variants.map((v, idx) => {
-                      const isZeroStock = parseInt(v.stock, 10) <= 0 || !v.stock;
+                      const totalFromColors = colors.length > 0
+                        ? colors.reduce((sum, c) => {
+                            const val = v.color_stocks?.[c.id] ?? (v.color_stocks?.[c.name] ?? 0);
+                            return sum + (parseInt(val, 10) || 0);
+                          }, 0)
+                        : (parseInt(v.stock, 10) || 0);
+                      const isZeroStock = totalFromColors <= 0;
+
                       return (
-                        <tr key={v.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
-                          <td style={{ padding: '8px' }}>
-                            <input
-                              type="number"
-                              value={v.ram}
-                              onChange={(e) => handleVariantChange(v.id, 'ram', e.target.value)}
-                              placeholder="8"
-                              className="form-input"
-                              style={{ width: '85px', padding: '6px 8px', fontSize: '12px' }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px' }}>
-                            <input
-                              type="number"
-                              value={v.storage}
-                              onChange={(e) => handleVariantChange(v.id, 'storage', e.target.value)}
-                              placeholder="256"
-                              className="form-input"
-                              style={{ width: '95px', padding: '6px 8px', fontSize: '12px' }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px' }}>
-                            <input
-                              type="number"
-                              value={v.price}
-                              onChange={(e) => handleVariantChange(v.id, 'price', e.target.value)}
-                              placeholder="3499000"
-                              className="form-input"
-                              style={{ width: '140px', padding: '6px 8px', fontSize: '12px', fontWeight: 700 }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Fragment key={v.id}>
+                          <tr style={{ borderBottom: colors.length > 0 ? 'none' : '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                            <td style={{ padding: '8px' }}>
                               <input
                                 type="number"
-                                value={v.stock}
-                                onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value)}
-                                placeholder="0"
+                                value={v.ram}
+                                onChange={(e) => handleVariantChange(v.id, 'ram', e.target.value)}
+                                placeholder="8"
                                 className="form-input"
-                                style={{ width: '70px', padding: '6px 8px', fontSize: '12px' }}
+                                style={{ width: '85px', padding: '6px 8px', fontSize: '12px' }}
                               />
-                              {isZeroStock ? (
-                                <span style={{ fontSize: '10px', background: 'rgba(255,69,58,0.2)', color: '#FF6B6B', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                                  Habis (0)
-                                </span>
-                              ) : (
-                                <span style={{ fontSize: '10px', background: 'rgba(52,199,89,0.15)', color: '#34C759', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                                  Ready ({v.stock})
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ padding: '8px', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleSetDefaultVariant(v.id)}
-                              style={{
-                                background: v.is_default ? 'rgba(198, 255, 0, 0.2)' : 'rgba(255,255,255,0.05)',
-                                border: v.is_default ? '1px solid var(--accent-lime)' : '1px solid rgba(255,255,255,0.1)',
-                                color: v.is_default ? 'var(--accent-lime)' : '#777',
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {v.is_default ? '✓ Standar' : 'Pilih'}
-                            </button>
-                          </td>
-                          <td style={{ padding: '8px', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveVariant(v.id)}
-                              style={{
-                                background: 'rgba(244, 63, 94, 0.15)',
-                                border: 'none',
-                                color: '#f43f5e',
-                                padding: '5px 8px',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                              }}
-                              title="Hapus varian ini"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </td>
-                        </tr>
+                            </td>
+                            <td style={{ padding: '8px' }}>
+                              <input
+                                type="number"
+                                value={v.storage}
+                                onChange={(e) => handleVariantChange(v.id, 'storage', e.target.value)}
+                                placeholder="256"
+                                className="form-input"
+                                style={{ width: '95px', padding: '6px 8px', fontSize: '12px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '8px' }}>
+                              <input
+                                type="number"
+                                value={v.price}
+                                onChange={(e) => handleVariantChange(v.id, 'price', e.target.value)}
+                                placeholder="3499000"
+                                className="form-input"
+                                style={{ width: '140px', padding: '6px 8px', fontSize: '12px', fontWeight: 700 }}
+                              />
+                            </td>
+                            <td style={{ padding: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {colors.length === 0 ? (
+                                  <input
+                                    type="number"
+                                    value={v.stock}
+                                    onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value)}
+                                    placeholder="0"
+                                    className="form-input"
+                                    style={{ width: '70px', padding: '6px 8px', fontSize: '12px' }}
+                                  />
+                                ) : (
+                                  <div style={{
+                                    background: 'rgba(0,0,0,0.4)',
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    color: '#fff',
+                                    minWidth: '50px',
+                                    textAlign: 'center'
+                                  }}>
+                                    {totalFromColors}
+                                  </div>
+                                )}
+                                {isZeroStock ? (
+                                  <span style={{ fontSize: '10px', background: 'rgba(255,69,58,0.2)', color: '#FF6B6B', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                                    Habis (0)
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '10px', background: 'rgba(52,199,89,0.15)', color: '#34C759', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                                    Ready ({totalFromColors})
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleSetDefaultVariant(v.id)}
+                                style={{
+                                  background: v.is_default ? 'rgba(198, 255, 0, 0.2)' : 'rgba(255,255,255,0.05)',
+                                  border: v.is_default ? '1px solid var(--accent-lime)' : '1px solid rgba(255,255,255,0.1)',
+                                  color: v.is_default ? 'var(--accent-lime)' : '#777',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {v.is_default ? '✓ Standar' : 'Pilih'}
+                              </button>
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariant(v.id)}
+                                style={{
+                                  background: 'rgba(244, 63, 94, 0.15)',
+                                  border: 'none',
+                                  color: '#f43f5e',
+                                  padding: '5px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer'
+                                }}
+                                title="Hapus varian ini"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Sub-row for Color Stock Matrix if colors exist */}
+                          {colors.length > 0 && (
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0, 229, 255, 0.02)' }}>
+                              <td colSpan={6} style={{ padding: '6px 12px 14px 12px' }}>
+                                <div style={{
+                                  background: 'rgba(0, 0, 0, 0.35)',
+                                  border: '1px solid rgba(0, 229, 255, 0.25)',
+                                  borderRadius: '8px',
+                                  padding: '10px 14px'
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                                    <div style={{ fontSize: '11px', color: '#00E5FF', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span>🎨 Alokasi Stok Warna ({v.ram || '0'}GB / {v.storage || '0'}GB):</span>
+                                      <span style={{ color: '#aaa', fontWeight: 500 }}>(Total: <strong>{totalFromColors} Unit</strong>)</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuickFillVariantStock(v.id, 5)}
+                                        style={{
+                                          background: 'rgba(255,255,255,0.06)',
+                                          border: '1px solid rgba(255,255,255,0.15)',
+                                          borderRadius: '4px',
+                                          color: '#ddd',
+                                          padding: '2px 8px',
+                                          fontSize: '10px',
+                                          fontWeight: 600,
+                                          cursor: 'pointer'
+                                        }}
+                                        title="Set semua warna menjadi 5 unit"
+                                      >
+                                        ⚡ Set Semua = 5
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuickFillVariantStock(v.id, 0)}
+                                        style={{
+                                          background: 'rgba(255,69,58,0.1)',
+                                          border: '1px solid rgba(255,69,58,0.25)',
+                                          borderRadius: '4px',
+                                          color: '#FF6B6B',
+                                          padding: '2px 8px',
+                                          fontSize: '10px',
+                                          fontWeight: 600,
+                                          cursor: 'pointer'
+                                        }}
+                                        title="Kosongkan stok semua warna"
+                                      >
+                                        Kosongkan (0)
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                    {colors.map(c => {
+                                      const colorStockVal = v.color_stocks?.[c.id] ?? (v.color_stocks?.[c.name] ?? '');
+                                      const numStock = parseInt(colorStockVal, 10) || 0;
+                                      return (
+                                        <div
+                                          key={c.id}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '6px',
+                                            padding: '4px 8px',
+                                          }}
+                                        >
+                                          <span style={{
+                                            width: '12px',
+                                            height: '12px',
+                                            borderRadius: '50%',
+                                            background: c.hex,
+                                            border: '1px solid rgba(255,255,255,0.3)',
+                                            flexShrink: 0
+                                          }} />
+                                          <span style={{ fontSize: '11px', color: '#eee', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {c.name || 'Warna'}
+                                          </span>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={colorStockVal}
+                                            onChange={(e) => handleVariantColorStockChange(v.id, c.id, e.target.value)}
+                                            placeholder="0"
+                                            className="form-input"
+                                            style={{
+                                              width: '55px',
+                                              padding: '3px 6px',
+                                              fontSize: '12px',
+                                              textAlign: 'center',
+                                              fontWeight: 700
+                                            }}
+                                          />
+                                          {numStock <= 0 ? (
+                                            <span style={{ fontSize: '9px', background: 'rgba(255,69,58,0.2)', color: '#FF6B6B', padding: '1px 5px', borderRadius: '3px', fontWeight: 800 }}>
+                                              Habis
+                                            </span>
+                                          ) : (
+                                            <span style={{ fontSize: '9px', background: 'rgba(52,199,89,0.15)', color: '#34C759', padding: '1px 5px', borderRadius: '3px', fontWeight: 700 }}>
+                                              Ready ({numStock})
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
