@@ -80,6 +80,10 @@ export default function NewSecondProductPage() {
 
     // AnTuTu & Gaming
     antutu_total: '',
+    antutu_cpu: '',
+    antutu_gpu: '',
+    antutu_memory: '',
+    antutu_ux: '',
     antutu_tier: '',
     fps_mlbb: '',
     fps_freefire: '',
@@ -124,7 +128,11 @@ export default function NewSecondProductPage() {
     camera: 'Triple 12MP (Tele 3x, Wide OIS, Ultra-Wide) + LiDAR',
     os: 'iOS 18 Ready',
     antutu_total: '1320000',
-    antutu_tier: 'Flagship Tier',
+    antutu_cpu: '420000',
+    antutu_gpu: '460000',
+    antutu_memory: '230000',
+    antutu_ux: '210000',
+    antutu_tier: 'Flagship Killer Tier',
     fps_mlbb: '120 FPS (Ultra)',
     fps_freefire: '60 FPS (Max)',
     fps_pubg: '90 FPS (Extreme)',
@@ -153,6 +161,35 @@ export default function NewSecondProductPage() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
+    }));
+  }
+
+  function autoCalculateAntutu() {
+    const total = parseInt(formData.antutu_total, 10);
+    if (!total || isNaN(total) || total <= 0) {
+      alert('Masukkan Total Skor AnTuTu terlebih dahulu!');
+      return;
+    }
+    const cpu = Math.round(total * 0.35);
+    const gpu = Math.round(total * 0.25);
+    const memory = Math.round(total * 0.20);
+    const ux = total - cpu - gpu - memory;
+
+    let tier = formData.antutu_tier;
+    if (!tier) {
+      if (total >= 1500000) tier = 'Raja Flagship';
+      else if (total >= 900000) tier = 'Flagship Killer';
+      else if (total >= 450000) tier = 'Mid-Range Value Tier';
+      else tier = 'Entry Level Hemat';
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      antutu_cpu: String(cpu),
+      antutu_gpu: String(gpu),
+      antutu_memory: String(memory),
+      antutu_ux: String(ux),
+      antutu_tier: tier,
     }));
   }
 
@@ -339,7 +376,11 @@ export default function NewSecondProductPage() {
         antutu: {
           version: 'AnTuTu Benchmark v10',
           total: parseInt(formData.antutu_total, 10) || 0,
-          tier: formData.antutu_tier || 'Entry/Mid Tier'
+          cpu: parseInt(formData.antutu_cpu, 10) || 0,
+          gpu: parseInt(formData.antutu_gpu, 10) || 0,
+          memory: parseInt(formData.antutu_memory, 10) || 0,
+          ux: parseInt(formData.antutu_ux, 10) || 0,
+          tier: formData.antutu_tier || 'Mid-Range Value Tier'
         },
         gaming_fps: {
           mlbb: formData.fps_mlbb || '60 FPS',
@@ -987,9 +1028,20 @@ export default function NewSecondProductPage() {
         {/* BAGIAN 4: SPESIFIKASI & BENCHMARK                             */}
         {/* ============================================================== */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <Layers size={16} color="var(--accent-lime)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>4. Spesifikasi Hardware & AnTuTu v10</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layers size={16} color="var(--accent-lime)" />
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>4. Spesifikasi Hardware & AnTuTu v10</h3>
+            </div>
+            <button
+              type="button"
+              onClick={autoCalculateAntutu}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '12px', padding: '5px 12px', borderColor: 'rgba(255, 109, 0, 0.4)', color: '#FF9100', cursor: 'pointer' }}
+            >
+              <Sparkles size={13} style={{ marginRight: '5px' }} />
+              Hitung Otomatis Breakdown AnTuTu
+            </button>
           </div>
 
           <div className="form-grid">
@@ -1004,16 +1056,41 @@ export default function NewSecondProductPage() {
             </div>
 
             <div className="form-group col-4">
-              <label className="form-label">Total Skor AnTuTu v10</label>
+              <label className="form-label" style={{ color: '#FF9100' }}>Total Skor AnTuTu v10</label>
               <input type="number" name="antutu_total" placeholder="Contoh: 1320000" className="form-input" value={formData.antutu_total} onChange={handleChange} />
             </div>
 
             <div className="form-group col-4">
+              <label className="form-label">CPU Score (Proses)</label>
+              <input type="number" name="antutu_cpu" placeholder="Contoh: 420000" className="form-input" value={formData.antutu_cpu} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label">GPU Score (Gaming)</label>
+              <input type="number" name="antutu_gpu" placeholder="Contoh: 460000" className="form-input" value={formData.antutu_gpu} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label" style={{ color: '#fbbf24' }}>Memory Score (RAM & ROM)</label>
+              <input type="number" name="antutu_memory" placeholder="Contoh: 230000" className="form-input" value={formData.antutu_memory} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label" style={{ color: '#34d399' }}>UX Score (Kelancaran)</label>
+              <input type="number" name="antutu_ux" placeholder="Contoh: 210000" className="form-input" value={formData.antutu_ux} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label">Label Rating AnTuTu</label>
+              <input type="text" name="antutu_tier" placeholder="Contoh: Flagship Killer Tier" className="form-input" value={formData.antutu_tier} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-6">
               <label className="form-label">Gaming MLBB (FPS)</label>
               <input type="text" name="fps_mlbb" placeholder="Contoh: 120 FPS (Ultra)" className="form-input" value={formData.fps_mlbb} onChange={handleChange} />
             </div>
 
-            <div className="form-group col-4">
+            <div className="form-group col-6">
               <label className="form-label">Gaming Genshin (FPS)</label>
               <input type="text" name="fps_genshin" placeholder="Contoh: 58 FPS (High)" className="form-input" value={formData.fps_genshin} onChange={handleChange} />
             </div>

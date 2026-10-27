@@ -19,6 +19,7 @@ import {
   X,
   Plus,
   RefreshCw,
+  Sparkles,
   Image as ImageIcon
 } from 'lucide-react';
 import { supabase, PRICE_TIERS } from '@/lib/supabase';
@@ -396,6 +397,35 @@ export default function EditProductPage() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
+    }));
+  }
+
+  function autoCalculateAntutu() {
+    const total = parseInt(formData.antutu_total, 10);
+    if (!total || isNaN(total) || total <= 0) {
+      alert('Masukkan Total Skor AnTuTu terlebih dahulu!');
+      return;
+    }
+    const cpu = Math.round(total * 0.35);
+    const gpu = Math.round(total * 0.25);
+    const memory = Math.round(total * 0.20);
+    const ux = total - cpu - gpu - memory;
+
+    let tier = formData.antutu_tier;
+    if (!tier) {
+      if (total >= 1500000) tier = 'Raja Flagship';
+      else if (total >= 900000) tier = 'Flagship Killer';
+      else if (total >= 450000) tier = 'Mid-Range Value Tier';
+      else tier = 'Entry Level Hemat';
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      antutu_cpu: String(cpu),
+      antutu_gpu: String(gpu),
+      antutu_memory: String(memory),
+      antutu_ux: String(ux),
+      antutu_tier: tier,
     }));
   }
 
@@ -1328,13 +1358,24 @@ export default function EditProductPage() {
 
         {/* ANTUTU BENCHMARK V10 */}
         <div style={{ background: 'rgba(255, 109, 0, 0.04)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 109, 0, 0.25)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <Flame size={18} color="#FF9100" />
-            <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#FF9100' }}>Skor AnTuTu Benchmark v10</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Flame size={18} color="#FF9100" />
+              <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#FF9100' }}>Skor AnTuTu Benchmark v10</h3>
+            </div>
+            <button
+              type="button"
+              onClick={autoCalculateAntutu}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '12px', padding: '5px 12px', borderColor: 'rgba(255, 109, 0, 0.4)', color: '#FF9100', cursor: 'pointer' }}
+            >
+              <Sparkles size={13} style={{ marginRight: '5px' }} />
+              Hitung Otomatis Breakdown (35% CPU, 25% GPU, 20% MEM, 20% UX)
+            </button>
           </div>
           <div className="form-grid">
             <div className="form-group col-4">
-              <label className="form-label" style={{ color: '#FF9100' }}>Total Skor AnTuTu v10</label>
+              <label className="form-label" style={{ color: '#FF9100' }}>Total Skor AnTuTu v10 *</label>
               <input
                 type="number"
                 name="antutu_total"
@@ -1345,12 +1386,24 @@ export default function EditProductPage() {
               />
             </div>
             <div className="form-group col-4">
-              <label className="form-label">CPU Score</label>
+              <label className="form-label">CPU Score (Proses)</label>
               <input type="number" name="antutu_cpu" className="form-input" value={formData.antutu_cpu} onChange={handleChange} />
             </div>
             <div className="form-group col-4">
-              <label className="form-label">GPU Score</label>
+              <label className="form-label">GPU Score (Gaming)</label>
               <input type="number" name="antutu_gpu" className="form-input" value={formData.antutu_gpu} onChange={handleChange} />
+            </div>
+            <div className="form-group col-4">
+              <label className="form-label" style={{ color: '#fbbf24' }}>Memory Score (RAM & ROM)</label>
+              <input type="number" name="antutu_memory" className="form-input" value={formData.antutu_memory} onChange={handleChange} />
+            </div>
+            <div className="form-group col-4">
+              <label className="form-label" style={{ color: '#34d399' }}>UX Score (Kelancaran UI)</label>
+              <input type="number" name="antutu_ux" className="form-input" value={formData.antutu_ux} onChange={handleChange} />
+            </div>
+            <div className="form-group col-4">
+              <label className="form-label">Label Rating AnTuTu</label>
+              <input type="text" name="antutu_tier" placeholder="Contoh: Mid-Range Value Tier" className="form-input" value={formData.antutu_tier} onChange={handleChange} />
             </div>
           </div>
         </div>

@@ -308,6 +308,35 @@ function NewProductContent() {
     }));
   }
 
+  function autoCalculateAntutu() {
+    const total = parseInt(formData.antutu_total, 10);
+    if (!total || isNaN(total) || total <= 0) {
+      alert('Masukkan Total Skor AnTuTu terlebih dahulu!');
+      return;
+    }
+    const cpu = Math.round(total * 0.35);
+    const gpu = Math.round(total * 0.25);
+    const memory = Math.round(total * 0.20);
+    const ux = total - cpu - gpu - memory;
+
+    let tier = formData.antutu_tier;
+    if (!tier) {
+      if (total >= 1500000) tier = 'Raja Flagship';
+      else if (total >= 900000) tier = 'Flagship Killer';
+      else if (total >= 450000) tier = 'Mid-Range Value Tier';
+      else tier = 'Entry Level Hemat';
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      antutu_cpu: String(cpu),
+      antutu_gpu: String(gpu),
+      antutu_memory: String(memory),
+      antutu_ux: String(ux),
+      antutu_tier: tier,
+    }));
+  }
+
   // Handle file selection with instant canvas compression
   async function handleFileSelect(e, targetSlot = null) {
     const files = Array.from(e.target.files || []);
@@ -1720,11 +1749,22 @@ function NewProductContent() {
         {/* BAGIAN 3: BENCHMARK ANTUTU v10                                */}
         {/* ============================================================== */}
         <div style={{ background: 'rgba(255, 109, 0, 0.04)', padding: '18px', borderRadius: '12px', border: '1px solid rgba(255, 109, 0, 0.25)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-            <Flame size={18} color="#FF9100" />
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#FF9100' }}>
-              3. Skor AnTuTu Benchmark v10 (Fitur Inti aduhp.com)
-            </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Flame size={18} color="#FF9100" />
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#FF9100' }}>
+                3. Skor AnTuTu Benchmark v10 (Fitur Inti aduhp.com)
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={autoCalculateAntutu}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '12px', padding: '5px 12px', borderColor: 'rgba(255, 109, 0, 0.4)', color: '#FF9100', cursor: 'pointer' }}
+            >
+              <Sparkles size={13} style={{ marginRight: '5px' }} />
+              Hitung Otomatis Breakdown (35% CPU, 25% GPU, 20% MEM, 20% UX)
+            </button>
           </div>
 
           <div className="form-grid">
