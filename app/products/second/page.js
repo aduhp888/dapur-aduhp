@@ -1056,6 +1056,21 @@ export default function NewSecondProductPage() {
             </div>
 
             <div className="form-group col-4">
+              <label className="form-label" style={{ color: 'var(--accent-lime)' }}>🔋 Kapasitas Baterai & Charging *</label>
+              <input type="text" name="battery" placeholder="Contoh: 3095 mAh • Fast Charging 20W" className="form-input" style={{ borderColor: 'rgba(212, 255, 0, 0.4)' }} value={formData.battery} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label">📸 Kamera Utama & Selfie</label>
+              <input type="text" name="camera" placeholder="Contoh: 12MP Triple OIS + LiDAR • 12MP TrueDepth" className="form-input" value={formData.camera} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label">📱 Sistem Operasi (OS)</label>
+              <input type="text" name="os" placeholder="Contoh: iOS 18 Ready / Android 14" className="form-input" value={formData.os} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
               <label className="form-label" style={{ color: '#FF9100' }}>Total Skor AnTuTu v10</label>
               <input type="number" name="antutu_total" placeholder="Contoh: 1320000" className="form-input" value={formData.antutu_total} onChange={handleChange} />
             </div>

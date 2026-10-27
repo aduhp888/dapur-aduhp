@@ -1942,8 +1942,18 @@ function NewProductContent() {
             </div>
 
             <div className="form-group col-4">
-              <label className="form-label">Baterai & Charging</label>
-              <input type="text" name="battery" placeholder="Contoh: 5000 mAh + 90W Fast Charge" className="form-input" value={formData.battery} onChange={handleChange} />
+              <label className="form-label" style={{ color: 'var(--accent-lime)' }}>🔋 Baterai & Charging *</label>
+              <input type="text" name="battery" placeholder="Contoh: 5000 mAh + 90W Fast Charge" className="form-input" style={{ borderColor: 'rgba(212, 255, 0, 0.4)' }} value={formData.battery} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label">📸 Kamera Utama & Selfie</label>
+              <input type="text" name="camera" placeholder="Contoh: 50MP Sony LYT-600 OIS • 20MP Selfie" className="form-input" value={formData.camera} onChange={handleChange} />
+            </div>
+
+            <div className="form-group col-4">
+              <label className="form-label">📱 Sistem Operasi (OS)</label>
+              <input type="text" name="os" placeholder="Contoh: HyperOS (Android 14)" className="form-input" value={formData.os} onChange={handleChange} />
             </div>
 
             <div className="form-group col-6">

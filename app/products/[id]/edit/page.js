@@ -1434,15 +1434,33 @@ export default function EditProductPage() {
           </div>
         </div>
 
-        {/* HARDWARE */}
-        <div className="form-grid">
-          <div className="form-group col-6">
-            <label className="form-label">Chipset & Fabrikasi</label>
-            <input type="text" name="chipset" className="form-input" value={formData.chipset} onChange={handleChange} />
+        {/* HARDWARE & BATERAI */}
+        <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-subtle)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <Layers size={16} color="var(--accent-lime)" />
+            <h3 style={{ fontSize: '14.5px', fontWeight: 700, color: '#fff' }}>Spesifikasi Hardware & Baterai</h3>
           </div>
-          <div className="form-group col-6">
-            <label className="form-label">Layar & Refresh Rate</label>
-            <input type="text" name="display" className="form-input" value={formData.display} onChange={handleChange} />
+          <div className="form-grid">
+            <div className="form-group col-6">
+              <label className="form-label">Chipset & Fabrikasi</label>
+              <input type="text" name="chipset" placeholder="Contoh: Snapdragon 8s Gen 3 (4nm) / Dimensity 7300" className="form-input" value={formData.chipset} onChange={handleChange} />
+            </div>
+            <div className="form-group col-6">
+              <label className="form-label">Layar & Refresh Rate</label>
+              <input type="text" name="display" placeholder="Contoh: 6.67 inch AMOLED 1.5K 120Hz" className="form-input" value={formData.display} onChange={handleChange} />
+            </div>
+            <div className="form-group col-4">
+              <label className="form-label" style={{ color: 'var(--accent-lime)' }}>🔋 Kapasitas Baterai & Charging *</label>
+              <input type="text" name="battery" placeholder="Contoh: 5000 mAh • 45W Fast Charging" className="form-input" style={{ borderColor: 'rgba(212, 255, 0, 0.4)' }} value={formData.battery} onChange={handleChange} />
+            </div>
+            <div className="form-group col-4">
+              <label className="form-label">📸 Kamera Utama & Selfie</label>
+              <input type="text" name="camera" placeholder="Contoh: 50MP OIS + 8MP Ultra-Wide • 32MP Selfie" className="form-input" value={formData.camera} onChange={handleChange} />
+            </div>
+            <div className="form-group col-4">
+              <label className="form-label">📱 Sistem Operasi (OS)</label>
+              <input type="text" name="os" placeholder="Contoh: Android 14, One UI 6.1 / iOS 18" className="form-input" value={formData.os} onChange={handleChange} />
+            </div>
           </div>
         </div>
 
