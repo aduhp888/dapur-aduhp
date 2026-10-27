@@ -23,12 +23,13 @@ function isTokenExpired(token: string): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow internal Next.js assets, static files, and public APIs
+  // 1. Allow internal Next.js assets, static files, robots.txt, and public APIs
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname === '/favicon.ico' ||
-    pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|css|js|woff2?)$/)
+    pathname === '/robots.txt' ||
+    pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|css|js|woff2?|txt)$/)
   ) {
     return NextResponse.next();
   }
