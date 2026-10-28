@@ -430,7 +430,7 @@ export default function ProductsPage() {
                   <th>Nama Smartphone & Chipset</th>
                   <th>Status di aduHP</th>
                   <th>Kategori Harga</th>
-                  <th>Skor AnTuTu v10</th>
+                  <th>Skor AnTuTu (v10 / v11)</th>
                   <th>Gaming FPS</th>
                   <th>IMEI & Garansi</th>
                   <th>Harga (IDR)</th>
@@ -576,10 +576,18 @@ export default function ProductsPage() {
 
                       <td>
                         {p.antutu?.total ? (
-                          <div className="badge-antutu">
-                            <Flame size={12} />
-                            <span>{Number(p.antutu.total).toLocaleString('id-ID')}</span>
-                          </div>
+                          (() => {
+                            const isV11 = String(p.antutu?.version || '').toLowerCase().includes('11');
+                            return (
+                              <div className={`badge-antutu ${isV11 ? 'v11' : ''}`}>
+                                <Flame size={12} color={isV11 ? '#C084FC' : '#FF9100'} />
+                                <span style={{ fontSize: '9px', opacity: 0.9, fontWeight: 900 }}>
+                                  {isV11 ? 'V11' : 'V10'}
+                                </span>
+                                <span>{Number(p.antutu.total).toLocaleString('id-ID')}</span>
+                              </div>
+                            );
+                          })()
                         ) : (
                           <span style={{ fontSize: '11px', color: '#666' }}>-</span>
                         )}

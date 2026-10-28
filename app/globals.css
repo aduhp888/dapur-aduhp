@@ -965,6 +965,13 @@ td {
   border-radius: 6px;
 }
 
+.badge-antutu.v11,
+.badge-antutu-v11 {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #C084FC;
+}
+
 .badge-tier-1jt {
   background: rgba(0, 229, 255, 0.12);
   border: 1px solid rgba(0, 229, 255, 0.3);

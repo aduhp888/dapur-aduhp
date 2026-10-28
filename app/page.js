@@ -446,7 +446,7 @@ export default function DashboardPage() {
                     <th>Smartphone & Chipset</th>
                     <th>Status di aduHP</th>
                     <th>Kategori Harga</th>
-                    <th>Skor AnTuTu v10</th>
+                    <th>Skor AnTuTu (v10 / v11)</th>
                     <th>Estimasi Gaming FPS</th>
                     <th>Garansi Distributor</th>
                     <th>Harga Promo (IDR)</th>
@@ -556,13 +556,23 @@ export default function DashboardPage() {
                       <td>
                         {p.antutu?.total ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <div className="badge-antutu">
-                              <Flame size={12} />
-                              <span>{Number(p.antutu.total).toLocaleString('id-ID')} Poin</span>
-                            </div>
-                            <div style={{ fontSize: '9.5px', color: '#888' }}>
-                              CPU: {p.antutu.cpu?.toLocaleString('id-ID')} • GPU: {p.antutu.gpu?.toLocaleString('id-ID')}
-                            </div>
+                            {(() => {
+                              const isV11 = String(p.antutu?.version || '').toLowerCase().includes('11');
+                              return (
+                                <>
+                                  <div className={`badge-antutu ${isV11 ? 'v11' : ''}`}>
+                                    <Flame size={12} color={isV11 ? '#C084FC' : '#FF9100'} />
+                                    <span style={{ fontSize: '9px', opacity: 0.9, fontWeight: 900 }}>
+                                      {isV11 ? 'V11' : 'V10'}
+                                    </span>
+                                    <span>{Number(p.antutu.total).toLocaleString('id-ID')} Poin</span>
+                                  </div>
+                                  <div style={{ fontSize: '9.5px', color: '#888' }}>
+                                    CPU: {p.antutu.cpu?.toLocaleString('id-ID')} • GPU: {p.antutu.gpu?.toLocaleString('id-ID')}
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <span style={{ fontSize: '11px', color: '#666' }}>-</span>

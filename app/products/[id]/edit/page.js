@@ -220,7 +220,8 @@ export default function EditProductPage() {
     camera: '',
     os: '',
 
-    // AnTuTu v10
+    // AnTuTu (v10 / v11)
+    antutu_version: 'v10',
     antutu_total: '',
     antutu_cpu: '',
     antutu_gpu: '',
@@ -283,7 +284,8 @@ export default function EditProductPage() {
           camera: p.specs?.camera_main || p.specs?.camera || '',
           os: p.specs?.os || '',
 
-          // AnTuTu
+          // AnTuTu (v10 or v11 detection)
+          antutu_version: (p.antutu?.version && String(p.antutu.version).toLowerCase().includes('11')) ? 'v11' : 'v10',
           antutu_total: p.antutu?.total ? String(p.antutu.total) : '',
           antutu_cpu: p.antutu?.cpu ? String(p.antutu.cpu) : '',
           antutu_gpu: p.antutu?.gpu ? String(p.antutu.gpu) : '',
@@ -406,6 +408,7 @@ export default function EditProductPage() {
       alert('Masukkan Total Skor AnTuTu terlebih dahulu!');
       return;
     }
+    const isV11 = formData.antutu_version === 'v11';
     const cpu = Math.round(total * 0.35);
     const gpu = Math.round(total * 0.25);
     const memory = Math.round(total * 0.20);
@@ -413,10 +416,17 @@ export default function EditProductPage() {
 
     let tier = formData.antutu_tier;
     if (!tier) {
-      if (total >= 1500000) tier = 'Raja Flagship';
-      else if (total >= 900000) tier = 'Flagship Killer';
-      else if (total >= 450000) tier = 'Mid-Range Value Tier';
-      else tier = 'Entry Level Hemat';
+      if (isV11) {
+        if (total >= 1800000) tier = 'Raja Flagship (v11)';
+        else if (total >= 1100000) tier = 'Flagship Killer (v11)';
+        else if (total >= 550000) tier = 'Mid-Range Value Tier (v11)';
+        else tier = 'Entry Level Hemat (v11)';
+      } else {
+        if (total >= 1500000) tier = 'Raja Flagship (v10)';
+        else if (total >= 900000) tier = 'Flagship Killer (v10)';
+        else if (total >= 450000) tier = 'Mid-Range Value Tier (v10)';
+        else tier = 'Entry Level Hemat (v10)';
+      }
     }
 
     setFormData(prev => ({
@@ -637,7 +647,7 @@ export default function EditProductPage() {
           colors: finalColors
         },
         antutu: {
-          version: 'AnTuTu Benchmark v10',
+          version: formData.antutu_version || 'v10',
           total: parseInt(formData.antutu_total, 10) || 0,
           cpu: parseInt(formData.antutu_cpu, 10) || 0,
           gpu: parseInt(formData.antutu_gpu, 10) || 0,
@@ -1356,31 +1366,112 @@ export default function EditProductPage() {
           )}
         </div>
 
-        {/* ANTUTU BENCHMARK V10 */}
-        <div style={{ background: 'rgba(255, 109, 0, 0.04)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 109, 0, 0.25)' }}>
+        {/* ANTUTU BENCHMARK (V10 / V11) */}
+        <div style={{
+          background: formData.antutu_version === 'v11' ? 'rgba(168, 85, 247, 0.05)' : 'rgba(255, 109, 0, 0.04)',
+          padding: '16px',
+          borderRadius: '12px',
+          border: formData.antutu_version === 'v11' ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(255, 109, 0, 0.25)',
+          transition: 'all 0.3s ease'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Flame size={18} color="#FF9100" />
-              <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#FF9100' }}>Skor AnTuTu Benchmark v10</h3>
+              <Flame size={18} color={formData.antutu_version === 'v11' ? '#C084FC' : '#FF9100'} />
+              <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: formData.antutu_version === 'v11' ? '#C084FC' : '#FF9100', margin: 0 }}>
+                Skor Benchmark AnTuTu ({formData.antutu_version === 'v11' ? 'v11 Terbaru' : 'v10 Standar'})
+              </h3>
             </div>
+
+            {/* Version Toggle Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '3px 4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span style={{ fontSize: '11px', color: '#888', padding: '0 6px', fontWeight: 600 }}>Versi:</span>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, antutu_version: 'v10' }))}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: formData.antutu_version === 'v10' ? '#FF9100' : 'transparent',
+                  color: formData.antutu_version === 'v10' ? '#000' : '#888',
+                  transition: 'all 0.2s'
+                }}
+              >
+                AnTuTu v10
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, antutu_version: 'v11' }))}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: formData.antutu_version === 'v11' ? '#A855F7' : 'transparent',
+                  color: formData.antutu_version === 'v11' ? '#fff' : '#888',
+                  transition: 'all 0.2s'
+                }}
+              >
+                AnTuTu v11 ⚡
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={autoCalculateAntutu}
               className="btn btn-secondary btn-sm"
-              style={{ fontSize: '12px', padding: '5px 12px', borderColor: 'rgba(255, 109, 0, 0.4)', color: '#FF9100', cursor: 'pointer' }}
+              style={{
+                fontSize: '12px',
+                padding: '5px 12px',
+                borderColor: formData.antutu_version === 'v11' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 109, 0, 0.4)',
+                color: formData.antutu_version === 'v11' ? '#C084FC' : '#FF9100',
+                cursor: 'pointer'
+              }}
             >
               <Sparkles size={13} style={{ marginRight: '5px' }} />
               Hitung Otomatis Breakdown (35% CPU, 25% GPU, 20% MEM, 20% UX)
             </button>
           </div>
+
+          {/* Info pill about versioning */}
+          <div style={{
+            fontSize: '11.5px',
+            color: formData.antutu_version === 'v11' ? '#D8B4FE' : '#FDBA74',
+            background: formData.antutu_version === 'v11' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255, 109, 0, 0.08)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>ℹ️</span>
+            <span>
+              {formData.antutu_version === 'v11'
+                ? 'Mode AnTuTu v11: Standar pengujian generasi terbaru dengan bobot grafik & AI baru. Disimpan terpisah agar tidak bias saat dikomparasikan.'
+                : 'Mode AnTuTu v10: Standar pengujian paling umum untuk database smartphone 2023-2025.'}
+            </span>
+          </div>
+
           <div className="form-grid">
             <div className="form-group col-4">
-              <label className="form-label" style={{ color: '#FF9100' }}>Total Skor AnTuTu v10 *</label>
+              <label className="form-label" style={{ color: formData.antutu_version === 'v11' ? '#C084FC' : '#FF9100' }}>
+                Total Skor AnTuTu {formData.antutu_version.toUpperCase()} *
+              </label>
               <input
                 type="number"
                 name="antutu_total"
                 className="form-input"
-                style={{ fontWeight: 800, fontFamily: 'var(--font-mono)' }}
+                style={{
+                  borderColor: formData.antutu_version === 'v11' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 109, 0, 0.4)',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-mono)'
+                }}
                 value={formData.antutu_total}
                 onChange={handleChange}
               />
@@ -1403,7 +1494,14 @@ export default function EditProductPage() {
             </div>
             <div className="form-group col-4">
               <label className="form-label">Label Rating AnTuTu</label>
-              <input type="text" name="antutu_tier" placeholder="Contoh: Mid-Range Value Tier" className="form-input" value={formData.antutu_tier} onChange={handleChange} />
+              <input
+                type="text"
+                name="antutu_tier"
+                placeholder={formData.antutu_version === 'v11' ? 'Contoh: Mid-Range Value Tier (v11)' : 'Contoh: Mid-Range Value Tier'}
+                className="form-input"
+                value={formData.antutu_tier}
+                onChange={handleChange}
+              />
             </div>
           </div>
         </div>
