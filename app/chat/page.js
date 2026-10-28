@@ -28,7 +28,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
-const WA_FALLBACK_NUMBER = '621511843450';
+const WA_FALLBACK_NUMBER = '6281511843450';
 
 function formatRupiah(num) {
   if (!num) return 'Rp 0';
@@ -686,7 +686,7 @@ export default function AdminLiveChatPage() {
                   title="Hubungi melalui WhatsApp"
                 >
                   <PhoneCall size={13} />
-                  <span>WhatsApp (+621511843450)</span>
+                  <span>WhatsApp (+6281511843450)</span>
                 </a>
 
                 <button
