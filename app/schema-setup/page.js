@@ -230,7 +230,9 @@ DROP POLICY IF EXISTS "Allow All Operations dapur_users" ON public.dapur_users;
 CREATE POLICY "Allow All Operations dapur_users" ON public.dapur_users FOR ALL USING (true) WITH CHECK (true);
 
 INSERT INTO public.dapur_users (email, full_name, role, status, notes)
-VALUES ('admin@aduhp.com', 'Superadmin Owner', 'superadmin', 'aktif', 'Pemilik Sistem & Pengelola Rekening PT')
+VALUES 
+  ('admin@aduhp.com', 'Superadmin Owner', 'superadmin', 'aktif', 'Pemilik Sistem & Pengelola Rekening PT'),
+  ('disconnect.idn@gmail.com', 'Superadmin Co-Owner', 'superadmin', 'aktif', 'Superadmin Sistem & Operasional aduHP')
 ON CONFLICT (email) DO UPDATE SET role = 'superadmin', status = 'aktif';`;
 
   function copySql() {

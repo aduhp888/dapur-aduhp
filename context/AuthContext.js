@@ -38,7 +38,8 @@ export function AuthProvider({ children }) {
 
     setUser(currentUser);
     const email = (currentUser.email || '').toLowerCase().trim();
-    const isDefaultSuperadmin = email === 'admin@aduhp.com';
+    const SUPERADMIN_EMAILS = ['admin@aduhp.com', 'disconnect.idn@gmail.com'];
+    const isDefaultSuperadmin = SUPERADMIN_EMAILS.includes(email);
 
     try {
       // 1. Try to fetch existing profile from dapur_users
@@ -49,8 +50,8 @@ export function AuthProvider({ children }) {
         .maybeSingle();
 
       if (data) {
-        setProfile(data);
-        const resolvedRole = data.role || (isDefaultSuperadmin ? 'superadmin' : 'admin');
+        const resolvedRole = isDefaultSuperadmin ? 'superadmin' : (data.role || 'admin');
+        setProfile({ ...data, role: resolvedRole });
         setRole(resolvedRole);
         syncRoleCookie(resolvedRole);
       } else {

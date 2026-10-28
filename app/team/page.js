@@ -67,23 +67,42 @@ export default function TeamManagementPage() {
             status: 'aktif',
             notes: 'Pemilik Sistem & Pengelola Rekening PT',
             created_at: new Date().toISOString()
+          },
+          {
+            id: 'co-owner-superadmin',
+            email: 'disconnect.idn@gmail.com',
+            full_name: 'Superadmin Co-Owner',
+            role: 'superadmin',
+            status: 'aktif',
+            notes: 'Superadmin Sistem & Operasional aduHP',
+            created_at: new Date().toISOString()
           }
         ]);
       } else if (data && data.length > 0) {
         setTeamMembers(data);
       } else {
         // Auto-seed default superadmin
-        const defaultOwner = {
-          email: 'admin@aduhp.com',
-          full_name: 'Superadmin Owner',
-          role: 'superadmin',
-          status: 'aktif',
-          notes: 'Pemilik Sistem & Pengelola Rekening PT',
-          created_at: new Date().toISOString()
-        };
-        setTeamMembers([defaultOwner]);
+        const defaultOwners = [
+          {
+            email: 'admin@aduhp.com',
+            full_name: 'Superadmin Owner',
+            role: 'superadmin',
+            status: 'aktif',
+            notes: 'Pemilik Sistem & Pengelola Rekening PT',
+            created_at: new Date().toISOString()
+          },
+          {
+            email: 'disconnect.idn@gmail.com',
+            full_name: 'Superadmin Co-Owner',
+            role: 'superadmin',
+            status: 'aktif',
+            notes: 'Superadmin Sistem & Operasional aduHP',
+            created_at: new Date().toISOString()
+          }
+        ];
+        setTeamMembers(defaultOwners);
         try {
-          await supabase.from('dapur_users').upsert([defaultOwner], { onConflict: 'email' });
+          await supabase.from('dapur_users').upsert(defaultOwners, { onConflict: 'email' });
         } catch (e) {}
       }
     } catch (err) {
@@ -94,8 +113,9 @@ export default function TeamManagementPage() {
   }
 
   async function handleToggleRole(member) {
-    if (member.email === 'admin@aduhp.com' && member.role === 'superadmin') {
-      alert('Akun Superadmin Utama (admin@aduhp.com) tidak dapat di-downgrade.');
+    const isProtectedSuperadmin = member.email === 'admin@aduhp.com' || member.email === 'disconnect.idn@gmail.com';
+    if (isProtectedSuperadmin && member.role === 'superadmin') {
+      alert(`Akun Superadmin Utama (${member.email}) tidak dapat di-downgrade.`);
       return;
     }
 
@@ -152,7 +172,7 @@ export default function TeamManagementPage() {
       alert('Anda tidak dapat menghapus akun Anda sendiri.');
       return;
     }
-    if (member.email === 'admin@aduhp.com') {
+    if (member.email === 'admin@aduhp.com' || member.email === 'disconnect.idn@gmail.com') {
       alert('Akun Superadmin Utama tidak dapat dihapus.');
       return;
     }

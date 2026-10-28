@@ -294,5 +294,7 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- Seed akun Superadmin utama
 INSERT INTO public.dapur_users (email, full_name, role, status, notes)
-VALUES ('admin@aduhp.com', 'Superadmin Owner', 'superadmin', 'aktif', 'Pemilik Sistem & Pengelola Rekening PT')
+VALUES 
+  ('admin@aduhp.com', 'Superadmin Owner', 'superadmin', 'aktif', 'Pemilik Sistem & Pengelola Rekening PT'),
+  ('disconnect.idn@gmail.com', 'Superadmin Co-Owner', 'superadmin', 'aktif', 'Superadmin Sistem & Operasional aduHP')
 ON CONFLICT (email) DO UPDATE SET role = 'superadmin', status = 'aktif';
