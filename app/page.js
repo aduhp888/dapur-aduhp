@@ -28,10 +28,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Lock
 } from 'lucide-react';
 import { supabase, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 function getPageNumbers(current, total) {
   if (total <= 7) {
@@ -47,6 +49,7 @@ function getPageNumbers(current, total) {
 }
 
 export default function DashboardPage() {
+  const { isSuperadmin } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFallback, setIsFallback] = useState(false);
@@ -99,6 +102,10 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(id) {
+    if (!isSuperadmin) {
+      alert('Aksi Ditolak: Hanya akun SUPERADMIN yang berwenang menghapus data produk secara permanen.');
+      return;
+    }
     if (!confirm('Yakin ingin menghapus produk ini dari dapur_products?')) return;
 
     try {
@@ -295,16 +302,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Card 4: Nilai Inventaris Jualan */}
-        <div className="stat-card">
+        <div className="stat-card" style={{ border: isSuperadmin ? undefined : '1px dashed rgba(255,255,255,0.15)' }}>
           <div className="stat-header">
             <span className="stat-label">Total Nilai Inventaris Jualan</span>
-            <div className="stat-icon"><TrendingUp size={16} color="var(--accent-lime)" /></div>
+            <div className="stat-icon">
+              {isSuperadmin ? <TrendingUp size={16} color="var(--accent-lime)" /> : <Lock size={15} color="#888" />}
+            </div>
           </div>
-          <div className="stat-value" style={{ fontSize: '20px', color: 'var(--accent-lime)' }}>
-            {formatIDR(totalInventoryValueDijual)}
+          <div className="stat-value" style={{ fontSize: '20px', color: isSuperadmin ? 'var(--accent-lime)' : '#aaa' }}>
+            {isSuperadmin ? formatIDR(totalInventoryValueDijual) : 'Rp ••••••••••'}
           </div>
           <div className="stat-desc">
-            Berdasarkan unit yang aktif dijual
+            {isSuperadmin ? 'Berdasarkan unit yang aktif dijual' : '🔒 Khusus Superadmin (Data Finansial Dirahasiakan)'}
           </div>
         </div>
       </div>
@@ -697,9 +706,15 @@ export default function DashboardPage() {
                           <button
                             onClick={() => handleDelete(p.id)}
                             className="btn btn-danger btn-sm"
-                            title="Hapus Produk"
+                            style={{
+                              opacity: isSuperadmin ? 1 : 0.45,
+                              cursor: isSuperadmin ? 'pointer' : 'not-allowed',
+                              background: isSuperadmin ? undefined : 'rgba(255,255,255,0.05)',
+                              borderColor: isSuperadmin ? undefined : 'rgba(255,255,255,0.1)'
+                            }}
+                            title={isSuperadmin ? "Hapus Produk" : "Hapus Produk (Khusus Superadmin)"}
                           >
-                            <Trash2 size={13} />
+                            {isSuperadmin ? <Trash2 size={13} /> : <Lock size={13} />}
                           </button>
                         </div>
                       </td>

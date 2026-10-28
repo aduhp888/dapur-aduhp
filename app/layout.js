@@ -1,6 +1,7 @@
 import './globals.css';
 import AppShell from '../components/AppShell';
 import { ThemeProvider } from '../context/ThemeContext';
+import { AuthProvider } from '../context/AuthContext';
 
 export const metadata = {
   title: 'dapur.aduhp.com — 1 Admin 3 Platform (Web, Android, iPhone)',
@@ -50,7 +51,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

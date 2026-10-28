@@ -15,26 +15,25 @@ import {
   UploadCloud,
   ShoppingBag,
   Scale,
-  Layers
+  Layers,
+  Users,
+  Crown,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user, profile, role, isSuperadmin, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function handleLogout() {
     if (confirm('Yakin ingin logout dari dapur.aduhp.com?')) {
       setLoggingOut(true);
-      try {
-        await supabase.auth.signOut();
-        await fetch('/api/auth/session', { method: 'DELETE' });
-        window.location.href = '/login';
-      } catch (err) {
-        console.error('Logout error:', err);
-        window.location.href = '/login';
-      }
+      await logout();
     }
   }
 
@@ -139,10 +138,36 @@ export default function Sidebar() {
           <Code2 size={16} />
           <span>API Mobile (iOS/Android)</span>
         </Link>
-        <Link href="/schema-setup" className={`nav-item ${pathname === '/schema-setup' ? 'active' : ''}`}>
-          <Database size={16} />
-          <span>Setup Supabase SQL</span>
-        </Link>
+
+        {/* Superadmin Exclusive: Manajemen Tim */}
+        {isSuperadmin ? (
+          <Link href="/team" className={`nav-item ${pathname === '/team' ? 'active' : ''}`} style={{ borderLeft: '2px solid #F59E0B' }}>
+            <Users size={16} color="#FBBF24" />
+            <span style={{ fontWeight: 700, color: '#FBBF24' }}>Manajemen Tim</span>
+            <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(245, 158, 11, 0.2)', color: '#FBBF24', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+              SUPER
+            </span>
+          </Link>
+        ) : (
+          <div className="nav-item" style={{ opacity: 0.45, cursor: 'not-allowed' }} title="Hanya Superadmin yang berhak mengelola akun tim">
+            <Lock size={15} color="#888" />
+            <span style={{ color: '#888' }}>Manajemen Tim</span>
+            <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(255, 255, 255, 0.05)', color: '#666', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+              KUNCI
+            </span>
+          </div>
+        )}
+
+        {/* Superadmin Exclusive: Setup Supabase SQL */}
+        {isSuperadmin ? (
+          <Link href="/schema-setup" className={`nav-item ${pathname === '/schema-setup' ? 'active' : ''}`}>
+            <Database size={16} />
+            <span>Setup Supabase SQL</span>
+            <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(0, 229, 255, 0.15)', color: '#00E5FF', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+              DEV
+            </span>
+          </Link>
+        ) : null}
       </div>
 
       {/* Tautan Langsung ke Web Utama aduhp.com */}
@@ -188,6 +213,36 @@ export default function Sidebar() {
             Tema
           </span>
           <ThemeToggle showLabel={true} style={{ padding: '4px 8px', fontSize: '11px' }} />
+        </div>
+
+        {/* User Role Card */}
+        <div style={{
+          padding: '8px 10px',
+          background: isSuperadmin ? 'rgba(245, 158, 11, 0.08)' : 'rgba(0, 229, 255, 0.06)',
+          border: isSuperadmin ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 229, 255, 0.2)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '10px', color: '#888', fontWeight: 600 }}>Tingkat Akses:</span>
+            {isSuperadmin ? (
+              <span style={{ fontSize: '9.5px', background: 'rgba(245, 158, 11, 0.2)', color: '#FBBF24', padding: '1px 6px', borderRadius: '4px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <Crown size={10} /> SUPERADMIN
+              </span>
+            ) : (
+              <span style={{ fontSize: '9.5px', background: 'rgba(0, 229, 255, 0.15)', color: '#00E5FF', padding: '1px 6px', borderRadius: '4px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <ShieldCheck size={10} /> ADMIN
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: '11px', color: '#fff', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {profile?.full_name || (isSuperadmin ? 'Superadmin Owner' : 'Staff Operasional')}
+          </div>
+          <div style={{ fontSize: '10px', color: '#888', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user?.email || 'admin@aduhp.com'}
+          </div>
         </div>
 
         <div className="connection-status">

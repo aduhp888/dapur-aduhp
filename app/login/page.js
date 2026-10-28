@@ -58,6 +58,24 @@ export default function LoginPage() {
       }
 
       if (data?.session) {
+        // Resolve user role
+        let userRole = 'admin';
+        const cleanEmail = email.trim().toLowerCase();
+        if (cleanEmail === 'admin@aduhp.com') {
+          userRole = 'superadmin';
+        } else {
+          try {
+            const { data: profile } = await supabase
+              .from('dapur_users')
+              .select('role')
+              .eq('email', cleanEmail)
+              .maybeSingle();
+            if (profile?.role) {
+              userRole = profile.role;
+            }
+          } catch (e) {}
+        }
+
         // Simpan session cookie via API route
         const res = await fetch('/api/auth/session', {
           method: 'POST',
@@ -65,6 +83,7 @@ export default function LoginPage() {
           body: JSON.stringify({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
+            role: userRole,
           }),
         });
 

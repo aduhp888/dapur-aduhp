@@ -186,7 +186,34 @@ END $$;
 CREATE POLICY "Public Read products bucket" ON storage.objects FOR SELECT USING (bucket_id = 'products');
 CREATE POLICY "Allow Upload products bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'products');
 CREATE POLICY "Allow Update products bucket" ON storage.objects FOR UPDATE USING (bucket_id = 'products');
-CREATE POLICY "Allow Delete products bucket" ON storage.objects FOR DELETE USING (bucket_id = 'products');`;
+CREATE POLICY "Allow Delete products bucket" ON storage.objects FOR DELETE USING (bucket_id = 'products');
+
+-- 7. TABEL: dapur_users (Superadmin & Admin Operasional)
+CREATE TABLE IF NOT EXISTS public.dapur_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auth_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL DEFAULT 'Admin Staff',
+    role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('superadmin', 'admin')),
+    status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'nonaktif')),
+    avatar_url TEXT,
+    phone TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dapur_users_email ON public.dapur_users(email);
+CREATE INDEX IF NOT EXISTS idx_dapur_users_role ON public.dapur_users(role);
+
+ALTER TABLE public.dapur_users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow All Operations dapur_users" ON public.dapur_users;
+CREATE POLICY "Allow All Operations dapur_users" ON public.dapur_users FOR ALL USING (true) WITH CHECK (true);
+
+INSERT INTO public.dapur_users (email, full_name, role, status, notes)
+VALUES ('admin@aduhp.com', 'Superadmin Owner', 'superadmin', 'aktif', 'Pemilik Sistem & Pengelola Rekening PT')
+ON CONFLICT (email) DO UPDATE SET role = 'superadmin', status = 'aktif';`;
 
   function copySql() {
     navigator.clipboard.writeText(sqlScript);

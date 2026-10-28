@@ -56,6 +56,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // 4. Role-based Route Protection (Superadmin Only)
+  const role = request.cookies.get('sb-user-role')?.value || 'admin';
+  const superadminOnlyRoutes = ['/schema-setup', '/team'];
+  const isSuperadminRoute = superadminOnlyRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route + '/')
+  );
+
+  if (isSuperadminRoute && role !== 'superadmin') {
+    // Admin operasional mencoba akses halaman terlarang -> redirect dengan notice
+    const deniedUrl = new URL('/', request.url);
+    deniedUrl.searchParams.set('denied', 'superadmin_only');
+    return NextResponse.redirect(deniedUrl);
+  }
+
   return NextResponse.next();
 }
 

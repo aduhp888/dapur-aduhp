@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { access_token, refresh_token } = await request.json();
+    const { access_token, refresh_token, role } = await request.json();
     if (!access_token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
@@ -27,6 +27,15 @@ export async function POST(request) {
       });
     }
 
+    // Role cookie (accessible by middleware and client)
+    cookieStore.set('sb-user-role', role || 'admin', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -38,6 +47,7 @@ export async function DELETE() {
     const cookieStore = await cookies();
     cookieStore.delete('sb-access-token');
     cookieStore.delete('sb-refresh-token');
+    cookieStore.delete('sb-user-role');
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

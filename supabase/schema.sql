@@ -240,3 +240,41 @@ FOR UPDATE USING (bucket_id = 'products');
 
 CREATE POLICY "Allow Delete products bucket" ON storage.objects 
 FOR DELETE USING (bucket_id = 'products');
+
+
+-- ------------------------------------------------------------------------------
+-- 7. TABEL: dapur_users (Manajemen Akun Superadmin & Admin Operasional)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.dapur_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auth_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL DEFAULT 'Admin Staff',
+    role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('superadmin', 'admin')),
+    status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'nonaktif')),
+    avatar_url TEXT,
+    phone TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dapur_users_email ON public.dapur_users(email);
+CREATE INDEX IF NOT EXISTS idx_dapur_users_role ON public.dapur_users(role);
+
+ALTER TABLE public.dapur_users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow All Operations dapur_users" ON public.dapur_users;
+CREATE POLICY "Allow All Operations dapur_users" ON public.dapur_users
+FOR ALL USING (true) WITH CHECK (true);
+
+-- Trigger auto-update timestamp dapur_users
+DROP TRIGGER IF EXISTS trigger_dapur_users_updated_at ON public.dapur_users;
+CREATE TRIGGER trigger_dapur_users_updated_at
+BEFORE UPDATE ON public.dapur_users
+FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- Seed akun Superadmin utama
+INSERT INTO public.dapur_users (email, full_name, role, status, notes)
+VALUES ('admin@aduhp.com', 'Superadmin Owner', 'superadmin', 'aktif', 'Pemilik Sistem & Pengelola Rekening PT')
+ON CONFLICT (email) DO UPDATE SET role = 'superadmin', status = 'aktif';

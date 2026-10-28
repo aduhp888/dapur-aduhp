@@ -23,10 +23,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Lock
 } from 'lucide-react';
 import { supabase, PRICE_TIERS } from '@/lib/supabase';
 import { formatIDR } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 function getPageNumbers(current, total) {
   if (total <= 7) {
@@ -42,6 +44,7 @@ function getPageNumbers(current, total) {
 }
 
 export default function ProductsPage() {
+  const { isSuperadmin } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -108,6 +111,10 @@ export default function ProductsPage() {
   }
 
   async function handleDelete(id) {
+    if (!isSuperadmin) {
+      alert('Aksi Ditolak: Hanya akun SUPERADMIN yang berwenang menghapus data produk secara permanen.');
+      return;
+    }
     if (!confirm('Hapus produk ini secara permanen dari dapur_products?')) return;
 
     try {
@@ -706,9 +713,15 @@ export default function ProductsPage() {
                           <button
                             onClick={() => handleDelete(p.id)}
                             className="btn btn-danger btn-sm"
-                            title="Hapus Produk"
+                            style={{
+                              opacity: isSuperadmin ? 1 : 0.45,
+                              cursor: isSuperadmin ? 'pointer' : 'not-allowed',
+                              background: isSuperadmin ? undefined : 'rgba(255,255,255,0.05)',
+                              borderColor: isSuperadmin ? undefined : 'rgba(255,255,255,0.1)'
+                            }}
+                            title={isSuperadmin ? "Hapus Produk Permanen" : "Hapus Produk (Khusus Superadmin)"}
                           >
-                            <Trash2 size={12} />
+                            {isSuperadmin ? <Trash2 size={12} /> : <Lock size={12} />}
                           </button>
                         </div>
                       </td>
