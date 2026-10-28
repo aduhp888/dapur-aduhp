@@ -762,10 +762,19 @@ export default function EditProductPage() {
           <div className="form-group col-6">
             <label className="form-label">Kategori / Tier Harga *</label>
             <select name="price_tier" className="form-select" value={formData.price_tier} onChange={handleChange}>
-              <option value="1-2-jt">Rp 1 - 2 Jutaan (Entry-Level Value)</option>
-              <option value="2-4-jt">Rp 2 - 4 Jutaan (Mid-Range Sweet Spot)</option>
-              <option value="4-8-jt">Rp 4 - 8 Jutaan (Flagship Killer & Upper Mid)</option>
-              <option value="flagship">Rp 8 Juta+ (Ultra Flagship & Premium)</option>
+              <option value="1-2-jt">Rp 1 - 2 Juta (Entry-Level Budget Value)</option>
+              <option value="2-4-jt">Rp 2 - 4 Juta (Mid-Range Sweet Spot)</option>
+              <option value="4-6-jt">Rp 4 - 6 Juta (Upper Mid-Range)</option>
+              <option value="6-8-jt">Rp 6 - 8 Juta (Flagship Killer Performance)</option>
+              <option value="8-10-jt">Rp 8 - 10 Juta (Sub-Flagship & Compact)</option>
+              <option value="10-15-jt">Rp 10 - 15 Juta (High-End Premium Flagship)</option>
+              <option value="15-jt-plus">Rp 15 Juta ke Atas (Ultra Flagship & Foldable)</option>
+              {formData.price_tier === '4-8-jt' && (
+                <option value="4-8-jt">⚠️ Rp 4 - 8 Juta (Format Lama - Disarankan pilih 4-6 Juta atau 6-8 Juta)</option>
+              )}
+              {formData.price_tier === 'flagship' && (
+                <option value="flagship">⚠️ Rp 8 Juta+ (Format Lama - Disarankan pilih 8-10 Juta, 10-15 Juta, atau 15 Juta+)</option>
+              )}
             </select>
           </div>
 

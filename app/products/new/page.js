@@ -97,7 +97,7 @@ function NewProductContent() {
     name: 'POCO F6 (12/512GB) Black Titanium',
     brand: 'POCO',
     category: 'Flagship Killer',
-    price_tier: '4-8-jt',
+    price_tier: '4-6-jt',
     condition: 'baru',
     grade: '100% Baru (BNIB Segel)',
     badge: '100% Baru BNIB Segel Resmi',
@@ -483,8 +483,11 @@ function NewProductContent() {
         const p = parseInt(formData.price, 10);
         if (p < 2000000) finalPriceTier = '1-2-jt';
         else if (p < 4000000) finalPriceTier = '2-4-jt';
-        else if (p < 8000000) finalPriceTier = '4-8-jt';
-        else finalPriceTier = 'flagship';
+        else if (p < 6000000) finalPriceTier = '4-6-jt';
+        else if (p < 8000000) finalPriceTier = '6-8-jt';
+        else if (p < 10000000) finalPriceTier = '8-10-jt';
+        else if (p < 15000000) finalPriceTier = '10-15-jt';
+        else finalPriceTier = '15-jt-plus';
       }
 
       // Format custom colors first
@@ -1131,15 +1134,18 @@ function NewProductContent() {
               </select>
             </div>
 
-            {/* Pilihan Tier Harga */}
+            {/* Pilihan Tier Harga (7 Kategori) */}
             <div className="form-group col-6">
               <label className="form-label">Pilihan Kategori / Tier Harga</label>
               <select name="price_tier" className="form-select" value={formData.price_tier} onChange={handleChange}>
                 <option value="">-- Otomatis Sesuai Harga --</option>
-                <option value="1-2-jt">Rp 1 - 2 Jutaan (Entry-Level Budget Value)</option>
-                <option value="2-4-jt">Rp 2 - 4 Jutaan (Mid-Range Sweet Spot)</option>
-                <option value="4-8-jt">Rp 4 - 8 Jutaan (Flagship Killer & Upper Mid)</option>
-                <option value="flagship">Rp 8 Juta+ (Ultra Flagship & Premium)</option>
+                <option value="1-2-jt">Rp 1 - 2 Juta (Entry-Level Budget Value)</option>
+                <option value="2-4-jt">Rp 2 - 4 Juta (Mid-Range Sweet Spot)</option>
+                <option value="4-6-jt">Rp 4 - 6 Juta (Upper Mid-Range)</option>
+                <option value="6-8-jt">Rp 6 - 8 Juta (Flagship Killer Performance)</option>
+                <option value="8-10-jt">Rp 8 - 10 Juta (Sub-Flagship & Compact)</option>
+                <option value="10-15-jt">Rp 10 - 15 Juta (High-End Premium Flagship)</option>
+                <option value="15-jt-plus">Rp 15 Juta ke Atas (Ultra Flagship & Foldable)</option>
               </select>
             </div>
 

@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.dapur_products (
     slug TEXT NOT NULL,
     brand TEXT NOT NULL DEFAULT 'POCO',
     category TEXT NOT NULL DEFAULT 'Smartphone',
-    price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-8-jt', 'flagship')),
+    price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-6-jt', '6-8-jt', '8-10-jt', '10-15-jt', '15-jt-plus', '4-8-jt', 'flagship')),
     condition TEXT NOT NULL DEFAULT 'baru' CHECK (condition IN ('baru', 'second')),
     grade TEXT DEFAULT '100% Baru (BNIB Segel)',
     badge TEXT DEFAULT '🟢 Dijual oleh aduHP',
@@ -79,6 +79,24 @@ ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT 
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS specs JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb;
+
+-- Pembaruan CHECK Constraint 7 Kategori Harga
+ALTER TABLE public.dapur_products DROP CONSTRAINT IF EXISTS dapur_products_price_tier_check;
+ALTER TABLE public.dapur_products ADD CONSTRAINT dapur_products_price_tier_check 
+CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-6-jt', '6-8-jt', '8-10-jt', '10-15-jt', '15-jt-plus', '4-8-jt', 'flagship'));
+
+-- Migrasi otomatis data lama ke 7 kategori baru berdasarkan harga riil produk
+UPDATE public.dapur_products
+SET price_tier = CASE
+    WHEN price < 2000000 THEN '1-2-jt'
+    WHEN price < 4000000 THEN '2-4-jt'
+    WHEN price < 6000000 THEN '4-6-jt'
+    WHEN price < 8000000 THEN '6-8-jt'
+    WHEN price < 10000000 THEN '8-10-jt'
+    WHEN price < 15000000 THEN '10-15-jt'
+    ELSE '15-jt-plus'
+END
+WHERE price_tier IN ('4-8-jt', 'flagship') OR price_tier IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_dapur_products_condition ON public.dapur_products(condition);
 CREATE INDEX IF NOT EXISTS idx_dapur_products_brand ON public.dapur_products(brand);

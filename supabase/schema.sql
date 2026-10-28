@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.dapur_products (
     slug TEXT NOT NULL,
     brand TEXT NOT NULL DEFAULT 'POCO',
     category TEXT NOT NULL DEFAULT 'Smartphone',
-    price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-8-jt', 'flagship')),
+    price_tier TEXT DEFAULT '1-2-jt' CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-6-jt', '6-8-jt', '8-10-jt', '10-15-jt', '15-jt-plus', '4-8-jt', 'flagship')),
     
     -- Kondisi: 'baru' (BNIB Segel Resmi) atau 'second' (Bekas Lolos QC Lab)
     condition TEXT NOT NULL DEFAULT 'baru' CHECK (condition IN ('baru', 'second')),
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS public.dapur_products (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Kolom pelengkap (Aman dijalankan jika tabel sudah ada sebelumnya)
+-- Kolom pelengkap & Pembaruan 7 Kategori Harga (Aman dijalankan jika tabel sudah ada)
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS photo_labels JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS is_for_sale BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS sale_status TEXT NOT NULL DEFAULT 'dijual';
@@ -79,6 +79,24 @@ ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT 
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS specs JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS antutu JSONB DEFAULT '{"total": 0, "cpu": 0, "gpu": 0, "memory": 0, "ux": 0, "tier": ""}'::jsonb;
 ALTER TABLE public.dapur_products ADD COLUMN IF NOT EXISTS gaming_fps JSONB DEFAULT '{"mlbb": "60 FPS", "pubg": "60 FPS", "genshin": "45 FPS"}'::jsonb;
+
+-- Pembaruan CHECK Constraint 7 Kategori Harga (1-2 Jt, 2-4 Jt, 4-6 Jt, 6-8 Jt, 8-10 Jt, 10-15 Jt, 15 Jt+)
+ALTER TABLE public.dapur_products DROP CONSTRAINT IF EXISTS dapur_products_price_tier_check;
+ALTER TABLE public.dapur_products ADD CONSTRAINT dapur_products_price_tier_check 
+CHECK (price_tier IN ('1-2-jt', '2-4-jt', '4-6-jt', '6-8-jt', '8-10-jt', '10-15-jt', '15-jt-plus', '4-8-jt', 'flagship'));
+
+-- Migrasi otomatis data lama ke 7 kategori baru berdasarkan harga riil produk
+UPDATE public.dapur_products
+SET price_tier = CASE
+    WHEN price < 2000000 THEN '1-2-jt'
+    WHEN price < 4000000 THEN '2-4-jt'
+    WHEN price < 6000000 THEN '4-6-jt'
+    WHEN price < 8000000 THEN '6-8-jt'
+    WHEN price < 10000000 THEN '8-10-jt'
+    WHEN price < 15000000 THEN '10-15-jt'
+    ELSE '15-jt-plus'
+END
+WHERE price_tier IN ('4-8-jt', 'flagship') OR price_tier IS NULL;
 
 -- Index Pencarian & Filter Cepat Katalog
 CREATE INDEX IF NOT EXISTS idx_dapur_products_condition ON public.dapur_products(condition);
