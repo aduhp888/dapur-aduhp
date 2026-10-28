@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -19,7 +19,8 @@ import {
   Users,
   Crown,
   ShieldCheck,
-  Lock
+  Lock,
+  MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from './ThemeToggle';
@@ -29,6 +30,42 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, profile, role, isSuperadmin, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchUnreadChat() {
+      try {
+        const { data, error } = await supabase
+          .from('dapur_chat_rooms')
+          .select('unread_admin_count')
+          .gt('unread_admin_count', 0);
+        if (!error && data) {
+          const total = data.reduce((acc, curr) => acc + (curr.unread_admin_count || 0), 0);
+          setUnreadChatCount(total);
+        }
+      } catch (e) {
+        // Silent fallback
+      }
+    }
+
+    fetchUnreadChat();
+
+    // Realtime channel
+    const channel = supabase
+      .channel('sidebar_unread_chats')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dapur_chat_rooms' },
+        () => {
+          fetchUnreadChat();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   async function handleLogout() {
     if (confirm('Yakin ingin logout dari dapur.aduhp.com?')) {
@@ -102,6 +139,19 @@ export default function Sidebar() {
           <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(198, 255, 0, 0.2)', color: 'var(--accent-lime)', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
             STORE
           </span>
+        </Link>
+        <Link href="/chat" className={`nav-item ${pathname === '/chat' ? 'active' : ''}`}>
+          <MessageSquare size={16} color="#00E5FF" />
+          <span style={{ fontWeight: 700 }}>Live Chat Pelanggan</span>
+          {unreadChatCount > 0 ? (
+            <span style={{ marginLeft: 'auto', fontSize: '10px', background: '#FF453A', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontWeight: 900 }}>
+              {unreadChatCount}
+            </span>
+          ) : (
+            <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(0, 229, 255, 0.15)', color: '#00E5FF', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+              LIVE
+            </span>
+          )}
         </Link>
       </div>
 
