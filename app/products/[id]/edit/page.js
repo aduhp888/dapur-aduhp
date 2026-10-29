@@ -487,6 +487,11 @@ export default function EditProductPage() {
           };
           return updated;
         });
+
+        // Jika mengganti foto slot utama, otomatis kosongkan manual URL lama agar tidak bentrok
+        if (slotIdx === 0) {
+          setFormData(prev => ({ ...prev, image_url: '' }));
+        }
       }
     } catch (err) {
       console.error('Compression failed:', err);
@@ -498,6 +503,7 @@ export default function EditProductPage() {
   }
 
   function handleRemovePhoto(slotIdx) {
+    const targetPhoto = photos[slotIdx];
     setPhotos(prev => {
       const updated = [...prev];
       if (updated[slotIdx]?.previewUrl && !updated[slotIdx]?.isExisting) {
@@ -505,6 +511,15 @@ export default function EditProductPage() {
       }
       updated[slotIdx] = null;
       return updated;
+    });
+
+    // Otomatis kosongkan manual URL foto lama agar tidak ter-suntik kembali saat disimpan
+    setFormData(prev => {
+      const urlToRemove = targetPhoto?.uploadedUrl || targetPhoto?.previewUrl;
+      if (slotIdx === 0 || (urlToRemove && prev.image_url === urlToRemove)) {
+        return { ...prev, image_url: '' };
+      }
+      return prev;
     });
   }
 
@@ -538,8 +553,8 @@ export default function EditProductPage() {
       }
 
       // Fallback if no slot has image but manual image_url exists
-      if (finalImageUrls.length === 0 && formData.image_url) {
-        finalImageUrls.push(formData.image_url);
+      if (finalImageUrls.length === 0 && formData.image_url && formData.image_url.trim()) {
+        finalImageUrls.push(formData.image_url.trim());
       }
 
       // Format custom colors first

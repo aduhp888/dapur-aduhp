@@ -447,7 +447,8 @@ export default function ProductsPage() {
               </thead>
               <tbody>
                 {paginatedProducts.map((p) => {
-                  const imageSrc = (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=200';
+                  const hasPhoto = p.images && Array.isArray(p.images) && p.images.length > 0 && typeof p.images[0] === 'string' && p.images[0].trim().length > 0;
+                  const imageSrc = hasPhoto ? p.images[0] : null;
                   
                   const tierClass = 
                     p.price_tier === '1-2-jt' ? 'badge-tier-1jt' :
@@ -470,15 +471,22 @@ export default function ProductsPage() {
                             background: '#161616',
                             border: p.condition === 'second' ? '1px solid #00E5FF' : '1px solid var(--border-subtle)',
                             overflow: 'hidden',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}>
-                            <img
-                              src={imageSrc}
-                              alt={p.name}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => {
-                                e.target.src = 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=200';
-                              }}
-                            />
+                            {imageSrc ? (
+                              <img
+                                src={imageSrc}
+                                alt={p.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <Smartphone size={20} color="#555" title="Belum ada foto" />
+                            )}
                           </div>
                           {Array.isArray(p.images) && p.images.length > 1 && (
                             <span 
