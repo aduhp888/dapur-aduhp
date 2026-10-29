@@ -308,7 +308,7 @@ export default function NewSecondProductPage() {
 
         if (item.uploadedUrl) {
           finalImageUrls.push(item.uploadedUrl);
-        } else {
+        } else if (item.blob || item.file) {
           const res = await uploadCompressedImageToStorage(item, {
             productName: formData.name,
             color: item.color || formData.color || 'default',
@@ -410,6 +410,10 @@ export default function NewSecondProductPage() {
     } catch (err) {
       console.error('Submit error:', err);
       setErrorMsg(err.message);
+      alert('Gagal menyimpan HP second: ' + (err.message || 'Terjadi kesalahan sistem'));
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setSubmitting(false);
     }

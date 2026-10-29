@@ -541,7 +541,7 @@ export default function EditProductPage() {
 
         if (item.uploadedUrl) {
           finalImageUrls.push(item.uploadedUrl);
-        } else if (item.file) {
+        } else if (item.blob || item.file) {
           const res = await uploadCompressedImageToStorage(item, {
             productName: formData.name,
             color: item.color || primaryColor,
@@ -695,6 +695,11 @@ export default function EditProductPage() {
     } catch (err) {
       console.error('Update error:', err);
       setErrorMsg(err.message);
+      alert('Gagal menyimpan perubahan: ' + (err.message || 'Terjadi kesalahan sistem'));
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } finally {
       setSubmitting(false);
     }
   }

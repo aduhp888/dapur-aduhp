@@ -457,7 +457,7 @@ function NewProductContent() {
 
         if (item.uploadedUrl) {
           finalImageUrls.push(item.uploadedUrl);
-        } else {
+        } else if (item.blob || item.file) {
           const res = await uploadCompressedImageToStorage(item, {
             productName: formData.name,
             color: item.color || primaryColor,
@@ -638,6 +638,10 @@ function NewProductContent() {
     } catch (err) {
       console.error('Submit error:', err);
       setErrorMsg(err.message);
+      alert('Gagal menyimpan produk: ' + (err.message || 'Terjadi kesalahan sistem'));
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setSubmitting(false);
     }
