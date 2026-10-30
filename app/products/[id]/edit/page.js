@@ -396,46 +396,28 @@ export default function EditProductPage() {
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
+    let extra = {};
+    if (name === 'antutu_total') {
+      const total = parseInt(value, 10);
+      if (total > 0) {
+        const isV11 = formData.antutu_version === 'v11';
+        if (isV11) {
+          if (total >= 1800000) extra.antutu_tier = 'Raja Flagship (v11)';
+          else if (total >= 1100000) extra.antutu_tier = 'Flagship Killer (v11)';
+          else if (total >= 550000) extra.antutu_tier = 'Mid-Range Value Tier (v11)';
+          else extra.antutu_tier = 'Entry Level Hemat (v11)';
+        } else {
+          if (total >= 1500000) extra.antutu_tier = 'Raja Flagship (v10)';
+          else if (total >= 900000) extra.antutu_tier = 'Flagship Killer (v10)';
+          else if (total >= 450000) extra.antutu_tier = 'Mid-Range Value Tier (v10)';
+          else extra.antutu_tier = 'Entry Level Hemat (v10)';
+        }
+      }
+    }
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
-    }));
-  }
-
-  function autoCalculateAntutu() {
-    const total = parseInt(formData.antutu_total, 10);
-    if (!total || isNaN(total) || total <= 0) {
-      alert('Masukkan Total Skor AnTuTu terlebih dahulu!');
-      return;
-    }
-    const isV11 = formData.antutu_version === 'v11';
-    const cpu = Math.round(total * 0.35);
-    const gpu = Math.round(total * 0.25);
-    const memory = Math.round(total * 0.20);
-    const ux = total - cpu - gpu - memory;
-
-    let tier = formData.antutu_tier;
-    if (!tier) {
-      if (isV11) {
-        if (total >= 1800000) tier = 'Raja Flagship (v11)';
-        else if (total >= 1100000) tier = 'Flagship Killer (v11)';
-        else if (total >= 550000) tier = 'Mid-Range Value Tier (v11)';
-        else tier = 'Entry Level Hemat (v11)';
-      } else {
-        if (total >= 1500000) tier = 'Raja Flagship (v10)';
-        else if (total >= 900000) tier = 'Flagship Killer (v10)';
-        else if (total >= 450000) tier = 'Mid-Range Value Tier (v10)';
-        else tier = 'Entry Level Hemat (v10)';
-      }
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      antutu_cpu: String(cpu),
-      antutu_gpu: String(gpu),
-      antutu_memory: String(memory),
-      antutu_ux: String(ux),
-      antutu_tier: tier,
+      ...extra
     }));
   }
 
@@ -1449,22 +1431,6 @@ export default function EditProductPage() {
                 AnTuTu v11 ⚡
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={autoCalculateAntutu}
-              className="btn btn-secondary btn-sm"
-              style={{
-                fontSize: '12px',
-                padding: '5px 12px',
-                borderColor: formData.antutu_version === 'v11' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 109, 0, 0.4)',
-                color: formData.antutu_version === 'v11' ? '#C084FC' : '#FF9100',
-                cursor: 'pointer'
-              }}
-            >
-              <Sparkles size={13} style={{ marginRight: '5px' }} />
-              Hitung Otomatis Breakdown (35% CPU, 25% GPU, 20% MEM, 20% UX)
-            </button>
           </div>
 
           {/* Info pill about versioning */}
@@ -1488,7 +1454,7 @@ export default function EditProductPage() {
           </div>
 
           <div className="form-grid">
-            <div className="form-group col-4">
+            <div className="form-group col-6">
               <label className="form-label" style={{ color: formData.antutu_version === 'v11' ? '#C084FC' : '#FF9100' }}>
                 Total Skor AnTuTu {formData.antutu_version.toUpperCase()} *
               </label>
@@ -1505,23 +1471,7 @@ export default function EditProductPage() {
                 onChange={handleChange}
               />
             </div>
-            <div className="form-group col-4">
-              <label className="form-label">CPU Score (Proses)</label>
-              <input type="number" name="antutu_cpu" className="form-input" value={formData.antutu_cpu} onChange={handleChange} />
-            </div>
-            <div className="form-group col-4">
-              <label className="form-label">GPU Score (Gaming)</label>
-              <input type="number" name="antutu_gpu" className="form-input" value={formData.antutu_gpu} onChange={handleChange} />
-            </div>
-            <div className="form-group col-4">
-              <label className="form-label" style={{ color: '#fbbf24' }}>Memory Score (RAM & ROM)</label>
-              <input type="number" name="antutu_memory" className="form-input" value={formData.antutu_memory} onChange={handleChange} />
-            </div>
-            <div className="form-group col-4">
-              <label className="form-label" style={{ color: '#34d399' }}>UX Score (Kelancaran UI)</label>
-              <input type="number" name="antutu_ux" className="form-input" value={formData.antutu_ux} onChange={handleChange} />
-            </div>
-            <div className="form-group col-4">
+            <div className="form-group col-6">
               <label className="form-label">Label Rating AnTuTu</label>
               <input
                 type="text"
@@ -1531,32 +1481,6 @@ export default function EditProductPage() {
                 value={formData.antutu_tier}
                 onChange={handleChange}
               />
-            </div>
-          </div>
-        </div>
-
-        {/* GAMING FPS */}
-        <div style={{ background: 'rgba(0, 229, 255, 0.04)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <Activity size={18} color="#00E5FF" />
-            <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#00E5FF' }}>Estimasi Gaming FPS</h3>
-          </div>
-          <div className="form-grid">
-            <div className="form-group col-3">
-              <label className="form-label">MLBB (FPS)</label>
-              <input type="text" name="fps_mlbb" className="form-input" value={formData.fps_mlbb} onChange={handleChange} />
-            </div>
-            <div className="form-group col-3">
-              <label className="form-label">Free Fire (FPS)</label>
-              <input type="text" name="fps_freefire" className="form-input" value={formData.fps_freefire} onChange={handleChange} />
-            </div>
-            <div className="form-group col-3">
-              <label className="form-label">PUBG Mobile (FPS)</label>
-              <input type="text" name="fps_pubg" className="form-input" value={formData.fps_pubg} onChange={handleChange} />
-            </div>
-            <div className="form-group col-3">
-              <label className="form-label">Genshin (FPS)</label>
-              <input type="text" name="fps_genshin" className="form-input" value={formData.fps_genshin} onChange={handleChange} />
             </div>
           </div>
         </div>
